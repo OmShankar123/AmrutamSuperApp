@@ -6,10 +6,11 @@ import { BookingConfirmationScreen } from '@/features/consultation/screens/Booki
 import { DoctorDetailScreen } from '@/features/consultation/screens/DoctorDetailScreen';
 import { SlotBookingScreen } from '@/features/consultation/screens/SlotBookingScreen';
 import { RecordDetailScreen } from '@/features/health-records/screens/RecordDetailScreen';
-import { CartScreen } from '@/features/shop/screens/CartScreen';
 import { ProductDetailScreen } from '@/features/shop/screens/ProductDetailScreen';
 import { WishlistScreen } from '@/features/shop/screens/WishlistScreen';
 
+import { NAVIGATION } from './constants';
+import { navigationRef } from './navigationRef';
 import { TabNavigator } from './TabNavigator';
 import type { RootStackParamList } from './types';
 
@@ -17,24 +18,45 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator(): React.JSX.Element {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen component={TabNavigator} name="Tabs" />
-        <Stack.Screen component={DoctorDetailScreen} name="DoctorDetail" />
+        <Stack.Screen component={TabNavigator} name={NAVIGATION.MAIN_TABS} />
+
+        {/* Consultation Module Stack */}
+        <Stack.Screen
+          component={DoctorDetailScreen}
+          name={NAVIGATION.DOCTOR_DETAIL}
+          options={{ animation: 'slide_from_right' }}
+        />
         <Stack.Screen
           component={SlotBookingScreen}
-          name="SlotBooking"
-          options={{ presentation: 'modal' }}
+          name={NAVIGATION.SLOT_BOOKING}
+          options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
         />
         <Stack.Screen
           component={BookingConfirmationScreen}
-          name="BookingConfirmation"
-          options={{ presentation: 'modal' }}
+          name={NAVIGATION.BOOKING_CONFIRMATION}
+          options={{ animation: 'fade' }}
         />
-        <Stack.Screen component={ProductDetailScreen} name="ProductDetail" />
-        <Stack.Screen component={CartScreen} name="Cart" />
-        <Stack.Screen component={WishlistScreen} name="Wishlist" />
-        <Stack.Screen component={RecordDetailScreen} name="RecordDetail" />
+
+        {/* Shop Module Stack */}
+        <Stack.Screen
+          component={ProductDetailScreen}
+          name={NAVIGATION.PRODUCT_DETAIL}
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          component={WishlistScreen}
+          name={NAVIGATION.WISHLIST}
+          options={{ animation: 'slide_from_right' }}
+        />
+
+        {/* Health Records Stack */}
+        <Stack.Screen
+          component={RecordDetailScreen}
+          name={NAVIGATION.RECORD_DETAIL}
+          options={{ animation: 'slide_from_right' }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

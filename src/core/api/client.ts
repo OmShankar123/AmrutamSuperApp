@@ -1,13 +1,58 @@
+import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import axios from 'axios';
 
 import { logger } from '@/core/logger';
 
-import { chaosRequestInterceptor, chaosResponseInterceptor } from './interceptors/chaos';
+import {
+  chaosRequestInterceptor,
+  chaosResponseInterceptor,
+  getChaosConfig,
+} from './interceptors/chaos';
+import { handleMockRoute } from './services/mockRouter';
 
 export const apiClient = axios.create({
   baseURL: 'http://localhost/mock-api/v1',
   timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
+  adapter: async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+    const chaos = getChaosConfig();
+    // Provide realistic API latency (350ms default or chaos configured delay)
+    const simulatedDelay = chaos.enabled ? chaos.delayMs : 350;
+    if (simulatedDelay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, simulatedDelay));
+    }
+
+    if (chaos.enabled && chaos.offline) {
+      return Promise.reject(new Error('Network offline (simulated)'));
+    }
+
+    if (chaos.enabled && chaos.errorRate > 0 && Math.random() < chaos.errorRate) {
+      return Promise.reject(new Error('Server error (simulated 500)'));
+    }
+
+    // Handle mock API responses in-app
+    const mockResponse = handleMockRoute(config);
+    if (mockResponse) {
+      if (mockResponse.status >= 400) {
+        return Promise.reject({
+          response: mockResponse,
+          message: mockResponse.data?.message ?? 'Request failed',
+        });
+      }
+      return Promise.resolve(mockResponse);
+    }
+
+    return Promise.reject({
+      response: {
+        data: { message: `Route ${config.url} not found in mock database` },
+        status: 404,
+        statusText: 'Not Found',
+        headers: {},
+        config,
+      },
+      message: `Route ${config.url} not found`,
+    });
+  },
 });
 
 apiClient.interceptors.request.use(chaosRequestInterceptor, (error) => Promise.reject(error));

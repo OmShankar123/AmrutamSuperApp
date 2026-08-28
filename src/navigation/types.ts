@@ -1,50 +1,38 @@
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 
-export type RootStackParamList = {
-  Tabs: NavigatorScreenParams<TabParamList>;
-  DoctorDetail: { doctorId: string };
-  SlotBooking: { doctorId: string };
-  BookingConfirmation: { bookingId: string };
-  ProductDetail: { productId: string };
-  Cart: undefined;
-  Wishlist: undefined;
-  RecordDetail: { recordId: string };
-};
+import type { NAVIGATION } from './constants';
 
 export type TabParamList = {
-  ConsultationTab: NavigatorScreenParams<ConsultationStackParamList>;
-  ShopTab: NavigatorScreenParams<ShopStackParamList>;
-  HealthRecordsTab: NavigatorScreenParams<HealthRecordsStackParamList>;
+  [NAVIGATION.DOCTOR_LIST]: undefined;
+  [NAVIGATION.PRODUCT_CATALOG]: undefined;
+  [NAVIGATION.TIMELINE]: undefined;
+  [NAVIGATION.UPCOMING_CONSULTATIONS]: undefined;
+  [NAVIGATION.CART]: undefined;
 };
 
-export type ConsultationStackParamList = {
-  DoctorList: undefined;
-  DoctorDetail: { doctorId: string };
-  UpcomingConsultations: undefined;
+export type RootStackParamList = {
+  [NAVIGATION.MAIN_TABS]: NavigatorScreenParams<TabParamList> | undefined;
+
+  // Consultation Flow
+  [NAVIGATION.DOCTOR_LIST]: undefined;
+  [NAVIGATION.DOCTOR_DETAIL]: { doctorId: string };
+  [NAVIGATION.SLOT_BOOKING]: { doctorId: string };
+  [NAVIGATION.BOOKING_CONFIRMATION]: { bookingId: string };
+  [NAVIGATION.UPCOMING_CONSULTATIONS]: undefined;
+
+  // Shop Flow
+  [NAVIGATION.PRODUCT_CATALOG]: undefined;
+  [NAVIGATION.PRODUCT_DETAIL]: { productId: string };
+  [NAVIGATION.CART]: undefined;
+  [NAVIGATION.WISHLIST]: undefined;
+
+  // Health Records Flow
+  [NAVIGATION.TIMELINE]: undefined;
+  [NAVIGATION.RECORD_DETAIL]: { recordId: string };
+
+  // Chaos & Dev Panel
+  [NAVIGATION.DEV_PANEL]: undefined;
 };
-
-export type ShopStackParamList = {
-  ProductCatalog: undefined;
-  Cart: undefined;
-  Wishlist: undefined;
-};
-
-export type HealthRecordsStackParamList = {
-  Timeline: undefined;
-  RecordDetail: { recordId: string };
-};
-
-export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<
-  RootStackParamList,
-  T
->;
-
-export type TabScreenProps<T extends keyof TabParamList> = CompositeScreenProps<
-  BottomTabScreenProps<TabParamList, T>,
-  NativeStackScreenProps<RootStackParamList>
->;
 
 declare global {
   namespace ReactNavigation {
