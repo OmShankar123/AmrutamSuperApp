@@ -1,5 +1,5 @@
 import React, { type FC } from 'react';
-import { Text, type TextProps, type TextStyle } from 'react-native';
+import { type StyleProp, Text, type TextProps, type TextStyle } from 'react-native';
 
 import { TextStyles } from '@/core/styles/TextStyles';
 
@@ -23,7 +23,7 @@ export type TypographyVariant =
 export interface TypographyProps extends TextProps {
   variant?: TypographyVariant;
   color?: string;
-  style?: TextStyle;
+  style?: StyleProp<TextStyle>;
 }
 
 export const Typography: FC<TypographyProps> = ({

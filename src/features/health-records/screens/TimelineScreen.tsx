@@ -4,7 +4,6 @@ import {
   FlatList,
   RefreshControl,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -17,8 +16,8 @@ import { navigate } from '@/navigation/navigationRef';
 import { Badge } from '@/shared/components/Badge';
 import { Chip } from '@/shared/components/Chip';
 import { EmptyState } from '@/shared/components/EmptyState';
-import { LanguageToggle } from '@/shared/components/LanguageToggle';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
+import { SearchHeader } from '@/shared/components/SearchHeader';
 import { Typography } from '@/shared/components/Typography';
 import { useDebounce } from '@/shared/hooks';
 import { ms } from '@/shared/utils/scale';
@@ -198,50 +197,26 @@ export function TimelineScreen(): React.JSX.Element {
 
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset>
-      {/* Header Bar */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Typography variant="h2">{t('healthRecords.title', 'Health Timeline')}</Typography>
-          <Typography style={styles.headerSub} variant="caption">
-            {records.length > 0
-              ? `${records.length} ${t('healthRecords.allTypes', 'Records Available')}`
-              : t('healthRecords.title', 'Patient Records')}
-          </Typography>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(8) }}>
-          <TouchableOpacity onPress={() => navigate(NAVIGATION.DEV_PANEL)} style={styles.devBtn}>
-            <Ionicons color={theme.colors.textSecondary} name="construct-outline" size={ms(18)} />
-          </TouchableOpacity>
-          <LanguageToggle />
-        </View>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons color={theme.colors.textSecondary} name="search-outline" size={ms(18)} />
-        <TextInput
-          accessibilityLabel="Search health records"
-          clearButtonMode="while-editing"
-          onChangeText={setQuery}
-          placeholder={t(
-            'healthRecords.searchPlaceholder',
-            'Search reports, prescriptions, allergies...',
-          )}
-          placeholderTextColor={theme.colors.textTertiary}
-          style={styles.searchInput}
-          value={query}
-        />
-        {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery('')}>
-            <Ionicons color={theme.colors.textSecondary} name="close-circle" size={ms(18)} />
-          </TouchableOpacity>
+      {/* Unified Search Header */}
+      <SearchHeader
+        onQueryChange={setQuery}
+        placeholder={t(
+          'healthRecords.searchPlaceholder',
+          'Search reports, prescriptions, allergies...',
         )}
-      </View>
+        query={query}
+        subtitle={
+          records.length > 0
+            ? `${records.length} ${t('healthRecords.allTypes', 'Records Available')}`
+            : t('healthRecords.title', 'Patient Records')
+        }
+        title={t('healthRecords.title', 'Health Timeline')}
+      />
 
       {/* Record Type Filter Pills */}
-      <View style={styles.filterSection}>
+      <View style={styles.chipsWrapper}>
         <ScrollView
-          contentContainerStyle={styles.filterScroll}
+          contentContainerStyle={styles.chipsScrollContent}
           horizontal
           showsHorizontalScrollIndicator={false}
         >
@@ -338,57 +313,11 @@ export function TimelineScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create((theme) => ({
-  devBtn: {
-    width: ms(32),
-    height: ms(32),
-    borderRadius: ms(16),
-    backgroundColor: theme.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: ms(16),
-    paddingTop: ms(8),
-    paddingBottom: ms(6),
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  headerSub: {
-    color: theme.colors.textSecondary,
-    marginTop: ms(2),
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: ms(12),
-    marginHorizontal: ms(16),
-    marginTop: ms(6),
-    marginBottom: ms(8),
-    height: ms(44),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: theme.fonts.regular,
-    fontSize: ms(14),
-    color: theme.colors.text,
-    marginLeft: ms(8),
-    paddingVertical: 0,
-  },
-  filterSection: {
+  chipsWrapper: {
     paddingVertical: ms(4),
     marginBottom: ms(4),
   },
-  filterScroll: {
+  chipsScrollContent: {
     paddingHorizontal: ms(16),
     gap: ms(8),
   },

@@ -8,5 +8,6 @@ export * from './Header';
 export * from './LanguageToggle';
 export * from './OfflineBanner';
 export * from './ScreenWrapper';
+export * from './SearchHeader';
 export * from './TextField';
 export * from './Typography';

@@ -3,8 +3,8 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
+  RefreshControl,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -17,53 +17,48 @@ import { navigate } from '@/navigation/navigationRef';
 import { Button } from '@/shared/components/Button';
 import { Chip } from '@/shared/components/Chip';
 import { EmptyState } from '@/shared/components/EmptyState';
-import { LanguageToggle } from '@/shared/components/LanguageToggle';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
+import { SearchHeader } from '@/shared/components/SearchHeader';
 import { Typography } from '@/shared/components/Typography';
 import { useDebounce } from '@/shared/hooks';
 import { ms } from '@/shared/utils/scale';
 
 import { DOCTOR_CARD_HEIGHT, DoctorCard } from '../components/DoctorCard';
 import { useInfiniteDoctors } from '../hooks/useDoctors';
-import type { Doctor, DoctorFilterParams, Specialization } from '../types';
+import type { Doctor, Specialization } from '../types';
 
-const SPECIALIZATIONS: readonly Specialization[] = [
-  'Panchakarma',
-  'Kayachikitsa',
-  'Nadi Pariksha',
-  'Shalya Tantra',
-  'Dravyaguna',
-  'Prasuti & Stri Roga',
-  'Kaumarbhritya',
-  'Ayurvedic Dietetics',
+const SPECIALIZATIONS: { name: Specialization; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { name: 'Panchakarma', icon: 'water-outline' },
+  { name: 'Kayachikitsa', icon: 'fitness-outline' },
+  { name: 'Nadi Pariksha', icon: 'pulse-outline' },
+  { name: 'Shalya Tantra', icon: 'cut-outline' },
+  { name: 'Dravyaguna', icon: 'leaf-outline' },
+  { name: 'Prasuti & Stri Roga', icon: 'woman-outline' },
+  { name: 'Kaumarbhritya', icon: 'happy-outline' },
+  { name: 'Ayurvedic Dietetics', icon: 'nutrition-outline' },
 ];
 
-const ROW_HEIGHT = DOCTOR_CARD_HEIGHT + ms(12);
-
 export function DoctorListScreen(): React.JSX.Element {
-  const { theme } = useUnistyles();
+  const { theme, rt } = useUnistyles();
   const { t } = useLanguage();
 
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 350);
-
   const [selectedSpec, setSelectedSpec] = useState<Specialization | undefined>();
-  const [sortBy, setSortBy] = useState<DoctorFilterParams['sortBy']>('rating');
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
-
   const [minExp, setMinExp] = useState<number | undefined>();
   const [maxFee, setMaxFee] = useState<number | undefined>();
   const [minRating, setMinRating] = useState<number | undefined>();
-  const [availableToday, setAvailableToday] = useState<boolean>(false);
+  const [availableToday, setAvailableToday] = useState(false);
+  const [sortBy, setSortBy] = useState<
+    'rating' | 'experience' | 'fee_asc' | 'fee_desc' | undefined
+  >('rating');
 
-  const hasActiveFilters = Boolean(
-    minExp !== undefined || maxFee !== undefined || minRating !== undefined || availableToday,
-  );
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
 
-  const filters: DoctorFilterParams = useMemo(
+  const filters = useMemo(
     () => ({
-      query: debouncedQuery.trim() || undefined,
+      query: debouncedQuery || undefined,
       specialization: selectedSpec,
       minExperience: minExp,
       maxFee,
@@ -74,26 +69,33 @@ export function DoctorListScreen(): React.JSX.Element {
     [debouncedQuery, selectedSpec, minExp, maxFee, minRating, availableToday, sortBy],
   );
 
-  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } =
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } =
     useInfiniteDoctors(filters);
 
-  const allDoctors = useMemo(() => {
+  const doctors = useMemo(() => {
     return data?.pages.flatMap((page) => page.data) ?? [];
   }, [data]);
-
-  const totalCount = data?.pages[0]?.total ?? 0;
 
   const handleDoctorPress = useCallback((doctor: Doctor) => {
     navigate(NAVIGATION.DOCTOR_DETAIL, { doctorId: doctor.id });
   }, []);
 
-  const handleApplyFilters = useCallback(() => {
+  const hasActiveFilters = Boolean(minExp || maxFee || minRating || availableToday);
+
+  const handleResetFilters = () => {
+    setMinExp(undefined);
+    setMaxFee(undefined);
+    setMinRating(undefined);
+    setAvailableToday(false);
+  };
+
+  const handleApplyFilters = () => {
     setIsApplyingFilters(true);
     setTimeout(() => {
       setIsApplyingFilters(false);
       setFilterModalVisible(false);
-    }, 250);
-  }, []);
+    }, 200);
+  };
 
   const renderItem = useCallback(
     ({ item }: { item: Doctor }) => <DoctorCard doctor={item} onPress={handleDoctorPress} />,
@@ -102,60 +104,39 @@ export function DoctorListScreen(): React.JSX.Element {
 
   const getItemLayout = useCallback(
     (_: any, index: number) => ({
-      length: ROW_HEIGHT,
-      offset: ROW_HEIGHT * index,
+      length: DOCTOR_CARD_HEIGHT + ms(12),
+      offset: (DOCTOR_CARD_HEIGHT + ms(12)) * index,
       index,
     }),
     [],
   );
 
-  const keyExtractor = useCallback((item: Doctor) => item.id, []);
+  const renderFooter = () => {
+    if (!isFetchingNextPage) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator color={theme.colors.primary} size="small" />
+        <Typography style={styles.footerText} variant="caption">
+          {t('common.loading', 'Loading more doctors...')}
+        </Typography>
+      </View>
+    );
+  };
 
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset>
-      {/* Top Header Row */}
-      <View style={styles.header}>
-        <View style={styles.headerTextWrap}>
-          <Typography variant="h1">
-            {t('consultation.title', 'Find an Ayurvedic Doctor')}
-          </Typography>
-          <Typography style={styles.subtitle} variant="bodySmall">
-            {totalCount > 0
-              ? `${totalCount.toLocaleString()} ${t('consultation.specialistsAvailable', 'Specialists Available')}`
-              : t('consultation.title')}
-          </Typography>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(8) }}>
-          <TouchableOpacity onPress={() => navigate(NAVIGATION.DEV_PANEL)} style={styles.devBtn}>
-            <Ionicons color={theme.colors.textSecondary} name="construct-outline" size={ms(18)} />
-          </TouchableOpacity>
-          <LanguageToggle />
-        </View>
-      </View>
-
-      {/* Search Bar Container with Live Debounce */}
-      <View style={styles.searchWrapper}>
-        <View style={styles.searchContainer}>
-          <Ionicons color={theme.colors.textSecondary} name="search-outline" size={ms(18)} />
-          <TextInput
-            accessibilityLabel={t('consultation.searchPlaceholder')}
-            clearButtonMode="while-editing"
-            onChangeText={setQuery}
-            placeholder={t(
-              'consultation.searchPlaceholder',
-              'Search by doctor, specialty, clinic...',
-            )}
-            placeholderTextColor={theme.colors.textTertiary}
-            style={styles.searchInput}
-            value={query}
-          />
-          {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery('')}>
-              <Ionicons color={theme.colors.textTertiary} name="close-circle" size={ms(18)} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      {/* Unified Search Header */}
+      <SearchHeader
+        onQueryChange={setQuery}
+        placeholder={t('consultation.searchPlaceholder', 'Search by doctor, specialty, clinic...')}
+        query={query}
+        subtitle={
+          doctors.length > 0
+            ? `${doctors.length} ${t('consultation.specialistsAvailable', 'Specialists Available')}`
+            : t('consultation.title', 'Find an Ayurvedic Doctor')
+        }
+        title={t('consultation.title', 'Find an Ayurvedic Doctor')}
+      />
 
       {/* Horizontally Scrolling Specialization Chips */}
       <View style={styles.chipsWrapper}>
@@ -165,18 +146,35 @@ export function DoctorListScreen(): React.JSX.Element {
           showsHorizontalScrollIndicator={false}
         >
           <Chip
+            icon={
+              <Ionicons
+                color={!selectedSpec ? theme.colors.textInverse : theme.colors.textSecondary}
+                name="apps-outline"
+                size={ms(14)}
+              />
+            }
             label={t('consultation.allSpecializations', 'All Specializations')}
             onPress={() => setSelectedSpec(undefined)}
             selected={!selectedSpec}
           />
-          {SPECIALIZATIONS.map((spec) => (
-            <Chip
-              key={spec}
-              label={spec}
-              onPress={() => setSelectedSpec(selectedSpec === spec ? undefined : spec)}
-              selected={selectedSpec === spec}
-            />
-          ))}
+          {SPECIALIZATIONS.map(({ name, icon }) => {
+            const isSelected = selectedSpec === name;
+            return (
+              <Chip
+                icon={
+                  <Ionicons
+                    color={isSelected ? theme.colors.textInverse : theme.colors.textSecondary}
+                    name={icon}
+                    size={ms(14)}
+                  />
+                }
+                key={name}
+                label={name}
+                onPress={() => setSelectedSpec(isSelected ? undefined : name)}
+                selected={isSelected}
+              />
+            );
+          })}
         </ScrollView>
       </View>
 
@@ -209,8 +207,16 @@ export function DoctorListScreen(): React.JSX.Element {
                 icon: 'time-outline',
                 val: 'experience',
               },
-              { label: 'Price: Low to High', icon: 'trending-up-outline', val: 'fee_asc' },
-              { label: 'Price: High to Low', icon: 'trending-down-outline', val: 'fee_desc' },
+              {
+                label: t('shop.priceLowToHigh', 'Fee: Low to High'),
+                icon: 'trending-up-outline',
+                val: 'fee_asc',
+              },
+              {
+                label: t('shop.priceHighToLow', 'Fee: High to Low'),
+                icon: 'trending-down-outline',
+                val: 'fee_desc',
+              },
             ] as const
           ).map((s) => {
             const isSelected = sortBy === s.val;
@@ -223,11 +229,11 @@ export function DoctorListScreen(): React.JSX.Element {
                 <Ionicons
                   color={isSelected ? theme.colors.textInverse : theme.colors.textSecondary}
                   name={s.icon as any}
-                  size={ms(13)}
+                  size={ms(12)}
                 />
                 <Typography
-                  style={isSelected ? styles.sortPillTextActive : styles.sortPillText}
-                  variant="bodySmallSemiBold"
+                  style={[styles.sortPillText, isSelected ? styles.sortPillTextActive : undefined]}
+                  variant="caption"
                 >
                   {s.label}
                 </Typography>
@@ -237,66 +243,63 @@ export function DoctorListScreen(): React.JSX.Element {
         </ScrollView>
       </View>
 
-      {/* Main Doctor List */}
+      {/* Doctor Virtualized List */}
       {isLoading ? (
-        <View style={styles.centered}>
+        <View style={styles.loaderWrap}>
           <ActivityIndicator color={theme.colors.primary} size="large" />
-          <Typography style={styles.loadingText} variant="bodySmall">
-            {t('common.loading', 'Loading specialists...')}
+          <Typography style={styles.loaderText} variant="bodySmall">
+            {t('common.loading', 'Finding Ayurvedic Specialists...')}
           </Typography>
-        </View>
-      ) : isError ? (
-        <View style={styles.centered}>
-          <Typography style={styles.errorText} variant="error">
-            {t('common.error', 'Could not load doctors.')}
-          </Typography>
-          <Button onPress={() => refetch()} title={t('common.retry', 'Retry')} variant="primary" />
         </View>
       ) : (
         <FlatList
-          contentContainerStyle={styles.listContent}
-          data={allDoctors}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: Math.max(rt.insets.bottom, ms(20)) },
+          ]}
+          data={doctors}
           getItemLayout={getItemLayout}
           initialNumToRender={10}
-          keyExtractor={keyExtractor}
+          keyExtractor={(item) => item.id}
           ListEmptyComponent={
             <EmptyState
+              actionTitle={t('common.reset', 'Reset Filters')}
               description={t(
                 'consultation.noResultsSub',
                 'Try adjusting your search query or removing active filters.',
               )}
               iconName="search-outline"
-              title={t('common.noResults', 'No doctors found')}
+              onAction={() => {
+                setQuery('');
+                setSelectedSpec(undefined);
+                handleResetFilters();
+              }}
+              title={t('common.noResults', 'No Doctors Found')}
             />
           }
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View style={styles.footerLoader}>
-                <ActivityIndicator color={theme.colors.primary} size="small" />
-                <Typography style={styles.footerLoaderText} variant="caption">
-                  {t('common.loading', 'Loading more doctors...')}
-                </Typography>
-              </View>
-            ) : (
-              <View style={{ height: ms(20) }} />
-            )
-          }
+          ListFooterComponent={renderFooter}
           maxToRenderPerBatch={15}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {
               fetchNextPage();
             }
           }}
-          onEndReachedThreshold={2}
-          onRefresh={refetch}
-          refreshing={isLoading}
-          removeClippedSubviews={false}
+          onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              colors={[theme.colors.primary]}
+              onRefresh={refetch}
+              refreshing={isRefetching}
+              tintColor={theme.colors.primary}
+            />
+          }
           renderItem={renderItem}
-          windowSize={15}
+          showsVerticalScrollIndicator={false}
+          windowSize={5}
         />
       )}
 
-      {/* Filter Modal */}
+      {/* Advanced Filter Modal */}
       <Modal
         animationType="slide"
         onRequestClose={() => setFilterModalVisible(false)}
@@ -306,19 +309,22 @@ export function DoctorListScreen(): React.JSX.Element {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Typography variant="h2">{t('common.filter', 'Filter Specialists')}</Typography>
+              <Typography variant="h2">
+                {t('consultation.filterSpecialists', 'Filter Specialists')}
+              </Typography>
               <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
                 <Ionicons color={theme.colors.textSecondary} name="close" size={ms(22)} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBody}>
+              {/* Availability Filter */}
               <Typography style={styles.sectionLabel} variant="label">
                 {t('consultation.availability', 'Availability')}
               </Typography>
               <TouchableOpacity
-                onPress={() => setAvailableToday(!availableToday)}
-                style={[styles.modalOption, availableToday && styles.modalOptionSelected]}
+                onPress={() => setAvailableToday((v) => !v)}
+                style={[styles.checkboxRow, availableToday && styles.checkboxRowActive]}
               >
                 <View style={styles.optionLeftRow}>
                   <Ionicons color={theme.colors.primary} name="flash-outline" size={ms(16)} />
@@ -331,6 +337,7 @@ export function DoctorListScreen(): React.JSX.Element {
                 )}
               </TouchableOpacity>
 
+              {/* Minimum Experience */}
               <Typography style={styles.sectionLabel} variant="label">
                 {t('consultation.minimumExperience', 'Minimum Experience')}
               </Typography>
@@ -345,20 +352,22 @@ export function DoctorListScreen(): React.JSX.Element {
                 ))}
               </View>
 
+              {/* Maximum Fee */}
               <Typography style={styles.sectionLabel} variant="label">
                 {t('consultation.maximumFee', 'Maximum Fee')}
               </Typography>
               <View style={styles.rowWrap}>
-                {[500, 1000, 1500, 2000].map((fee) => (
+                {[500, 800, 1200, 2000].map((fee) => (
                   <Chip
                     key={fee}
-                    label={`Under ₹${fee}`}
+                    label={`${t('common.under', 'Under')} ₹${fee}`}
                     onPress={() => setMaxFee(maxFee === fee ? undefined : fee)}
                     selected={maxFee === fee}
                   />
                 ))}
               </View>
 
+              {/* Minimum Rating */}
               <Typography style={styles.sectionLabel} variant="label">
                 {t('consultation.minimumRating', 'Minimum Rating')}
               </Typography>
@@ -376,20 +385,15 @@ export function DoctorListScreen(): React.JSX.Element {
 
             <View style={styles.modalFooter}>
               <Button
-                onPress={() => {
-                  setMinExp(undefined);
-                  setMaxFee(undefined);
-                  setMinRating(undefined);
-                  setAvailableToday(false);
-                }}
-                style={{ flex: 1 }}
+                onPress={handleResetFilters}
+                style={styles.modalBtn}
                 title={t('common.reset', 'Reset')}
                 variant="secondary"
               />
               <Button
                 isLoading={isApplyingFilters}
                 onPress={handleApplyFilters}
-                style={{ flex: 2 }}
+                style={styles.modalBtn}
                 title={t('common.apply', 'Apply Filters')}
                 variant="primary"
               />
@@ -401,97 +405,53 @@ export function DoctorListScreen(): React.JSX.Element {
   );
 }
 
-const styles = StyleSheet.create((theme) => ({
-  devBtn: {
-    width: ms(32),
-    height: ms(32),
-    borderRadius: ms(16),
-    backgroundColor: theme.colors.surfaceElevated,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: ms(16),
-    paddingTop: ms(8),
-    paddingBottom: ms(6),
-  },
-  headerTextWrap: {
-    flex: 1,
-    marginRight: ms(12),
-  },
-  subtitle: {
-    marginTop: ms(2),
-  },
-  searchWrapper: {
-    paddingHorizontal: ms(16),
-    marginTop: ms(8),
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: ms(12),
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    height: ms(46),
-    gap: ms(8),
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: theme.fonts.regular,
-    fontSize: ms(14),
-    color: theme.colors.text,
-    height: '100%',
-  },
+const styles = StyleSheet.create((theme, rt) => ({
   chipsWrapper: {
-    marginTop: ms(10),
+    paddingVertical: ms(4),
   },
   chipsScrollContent: {
     paddingHorizontal: ms(16),
+    gap: ms(8),
   },
   filterBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: ms(16),
-    marginVertical: ms(10),
-  },
-  sortScrollContent: {
-    paddingRight: ms(16),
+    paddingHorizontal: ms(16),
+    paddingVertical: ms(8),
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: ms(4),
-    paddingHorizontal: ms(12),
-    paddingVertical: ms(7),
-    backgroundColor: theme.colors.surface,
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(5),
     borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.surfaceElevated,
+    marginRight: ms(8),
     borderWidth: 1,
     borderColor: theme.colors.border,
-    marginRight: ms(8),
   },
   filterButtonActive: {
-    backgroundColor: theme.colors.successLight,
     borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.successLight,
   },
   filterButtonText: {
-    fontSize: ms(12),
+    fontSize: ms(11),
+  },
+  sortScrollContent: {
+    gap: ms(6),
+    alignItems: 'center',
   },
   sortPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: ms(4),
-    paddingHorizontal: ms(12),
-    paddingVertical: ms(7),
-    backgroundColor: theme.colors.surfaceElevated,
-    borderRadius: theme.radius.sm,
-    marginRight: ms(6),
+    paddingHorizontal: ms(10),
+    paddingVertical: ms(5),
+    borderRadius: ms(20),
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
@@ -501,35 +461,34 @@ const styles = StyleSheet.create((theme) => ({
   },
   sortPillText: {
     color: theme.colors.textSecondary,
-    fontSize: ms(12),
+    fontSize: ms(11),
   },
   sortPillTextActive: {
     color: theme.colors.textInverse,
-    fontSize: ms(12),
+    fontFamily: theme.fonts.bold,
   },
   listContent: {
     paddingHorizontal: ms(16),
-    paddingBottom: ms(24),
+    paddingTop: ms(6),
   },
-  centered: {
+  loaderWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: ms(24),
+    padding: ms(32),
   },
-  loadingText: {
+  loaderText: {
+    color: theme.colors.textSecondary,
     marginTop: ms(12),
   },
-  errorText: {
-    marginBottom: ms(12),
-  },
   footerLoader: {
-    paddingVertical: ms(20),
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: ms(6),
+    paddingVertical: ms(16),
+    gap: ms(8),
   },
-  footerLoaderText: {
+  footerText: {
     color: theme.colors.textSecondary,
   },
   modalBackdrop: {
@@ -543,6 +502,7 @@ const styles = StyleSheet.create((theme) => ({
     borderTopRightRadius: ms(24),
     maxHeight: '80%',
     padding: ms(20),
+    paddingBottom: Math.max(rt.insets.bottom, ms(20)),
   },
   modalHeader: {
     flexDirection: 'row',
@@ -550,7 +510,7 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    paddingBottom: ms(14),
+    paddingBottom: ms(12),
   },
   modalBody: {
     paddingVertical: ms(12),
@@ -559,24 +519,24 @@ const styles = StyleSheet.create((theme) => ({
     marginTop: ms(14),
     marginBottom: ms(8),
   },
-  modalOption: {
+  checkboxRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
     padding: ms(12),
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surfaceElevated,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    alignItems: 'center',
+  },
+  checkboxRowActive: {
+    backgroundColor: theme.colors.successLight,
+    borderColor: theme.colors.primary,
   },
   optionLeftRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: ms(8),
-  },
-  modalOptionSelected: {
-    backgroundColor: theme.colors.successLight,
-    borderColor: theme.colors.primary,
   },
   rowWrap: {
     flexDirection: 'row',
@@ -587,9 +547,8 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     gap: ms(12),
     marginTop: ms(16),
-    paddingTop: ms(12),
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+  },
+  modalBtn: {
+    flex: 1,
   },
 }));
-// devBtn definition
