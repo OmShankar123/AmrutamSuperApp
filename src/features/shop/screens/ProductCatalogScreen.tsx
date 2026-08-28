@@ -26,6 +26,7 @@ import { ms } from '@/shared/utils/scale';
 import { ProductCard } from '../components/ProductCard';
 import { useInfiniteProducts } from '../hooks/useProducts';
 import { useCartStore } from '../store/useCartStore';
+import { useWishlistStore } from '../store/useWishlistStore';
 import type { HealthConcern, Product, ProductCategory } from '../types';
 
 const CATEGORIES: { name: ProductCategory; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -55,6 +56,7 @@ export function ProductCatalogScreen(): React.JSX.Element {
   const { t } = useLanguage();
   const cartItems = useCartStore((s) => s.items);
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const wishlistItems = useWishlistStore((s) => s.items);
 
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 350);
@@ -144,11 +146,31 @@ export function ProductCatalogScreen(): React.JSX.Element {
 
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset>
-      {/* Unified Search Header */}
+      {/* Unified Search Header with Wishlist Icon */}
       <SearchHeader
         onQueryChange={setQuery}
         placeholder={t('shop.searchPlaceholder', 'Search herbal medicines, oils, malts...')}
         query={query}
+        rightAction={
+          <TouchableOpacity
+            accessibilityLabel={t('shop.wishlist', 'Wishlist')}
+            onPress={() => navigate(NAVIGATION.WISHLIST)}
+            style={styles.wishlistHeaderBtn}
+          >
+            <Ionicons
+              color={wishlistItems.length > 0 ? theme.colors.error : theme.colors.textSecondary}
+              name={wishlistItems.length > 0 ? 'heart' : 'heart-outline'}
+              size={ms(18)}
+            />
+            {wishlistItems.length > 0 && (
+              <View style={styles.wishlistBadge}>
+                <Typography style={styles.wishlistBadgeText} variant="caption">
+                  {wishlistItems.length}
+                </Typography>
+              </View>
+            )}
+          </TouchableOpacity>
+        }
         subtitle={
           products.length > 0
             ? `${products.length} ${t('shop.formulationsAvailable', 'Formulations Available')}`
@@ -439,6 +461,34 @@ const styles = StyleSheet.create((theme, rt) => ({
   chipsScrollContent: {
     paddingHorizontal: ms(16),
     gap: ms(6),
+  },
+  wishlistHeaderBtn: {
+    width: ms(32),
+    height: ms(32),
+    borderRadius: ms(16),
+    backgroundColor: theme.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  wishlistBadge: {
+    position: 'absolute',
+    top: -ms(3),
+    right: -ms(3),
+    backgroundColor: theme.colors.error,
+    borderRadius: ms(8),
+    minWidth: ms(16),
+    height: ms(16),
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: ms(2),
+  },
+  wishlistBadgeText: {
+    color: theme.colors.textInverse,
+    fontSize: ms(9),
+    fontFamily: theme.fonts.bold,
   },
   filterBar: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { type FC } from 'react';
+import React, { type FC, type ReactNode } from 'react';
 import { TextInput, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ export interface SearchHeaderProps {
   onQueryChange: (q: string) => void;
   placeholder: string;
   showDevTrigger?: boolean;
+  rightAction?: ReactNode;
 }
 
 export const SearchHeader: FC<SearchHeaderProps> = ({
@@ -26,6 +27,7 @@ export const SearchHeader: FC<SearchHeaderProps> = ({
   onQueryChange,
   placeholder,
   showDevTrigger = true,
+  rightAction,
 }) => {
   const { theme } = useUnistyles();
 
@@ -43,6 +45,7 @@ export const SearchHeader: FC<SearchHeaderProps> = ({
         </View>
 
         <View style={styles.controlsRow}>
+          {rightAction}
           {showDevTrigger && (
             <TouchableOpacity
               accessibilityLabel="Developer Panel"
