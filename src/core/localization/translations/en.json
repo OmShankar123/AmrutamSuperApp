@@ -1,0 +1,46 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "noResults": "No results found",
+    "seeAll": "See All"
+  },
+  "consultation": {
+    "title": "Consultations",
+    "findDoctor": "Find a Doctor",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "bookSlot": "Book Slot",
+    "slotBooked": "Slot Booked!",
+    "slotConflict": "This slot is no longer available",
+    "offlineQueued": "Booking queued — will sync when online"
+  },
+  "shop": {
+    "title": "Shop",
+    "cart": "Cart",
+    "wishlist": "Wishlist",
+    "addToCart": "Add to Cart",
+    "addToWishlist": "Wishlist",
+    "checkout": "Checkout",
+    "emptyCart": "Your cart is empty",
+    "outOfStock": "Out of Stock"
+  },
+  "healthRecords": {
+    "title": "Health Records",
+    "timeline": "Timeline",
+    "addRecord": "Add Record",
+    "noRecords": "No health records found"
+  },
+  "offline": {
+    "banner": "You are offline — showing cached data",
+    "syncing": "Syncing...",
+    "syncComplete": "All changes synced!"
+  }
+}
