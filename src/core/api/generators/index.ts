@@ -1,9 +1,5 @@
 import type { Booking, Doctor, DoctorFilterParams, Slot } from '@/features/consultation/types';
-import type {
-  HealthRecord,
-  HealthRecordFilterParams,
-  TimelineGroup,
-} from '@/features/health-records/types';
+import type { HealthRecord, HealthRecordFilterParams } from '@/features/health-records/types';
 import type { Product, ProductFilterParams } from '@/features/shop/types';
 
 import type { PaginatedResponse } from '../client';
@@ -249,8 +245,9 @@ class InMemoryDatabase {
         (r) =>
           r.title.toLowerCase().includes(q) ||
           r.doctorName.toLowerCase().includes(q) ||
-          r.facility.toLowerCase().includes(q) ||
-          r.diagnosisOrNotes.toLowerCase().includes(q) ||
+          r.clinicOrLabName.toLowerCase().includes(q) ||
+          r.summary.toLowerCase().includes(q) ||
+          r.notes.toLowerCase().includes(q) ||
           r.tags.some((t) => t.toLowerCase().includes(q)),
       );
     }
@@ -261,10 +258,6 @@ class InMemoryDatabase {
 
     if (params.tag) {
       filtered = filtered.filter((r) => r.tags.includes(params.tag!));
-    }
-
-    if (params.year) {
-      filtered = filtered.filter((r) => new Date(r.date).getFullYear() === params.year);
     }
 
     const total = filtered.length;
@@ -278,33 +271,6 @@ class InMemoryDatabase {
       limit,
       hasMore: startIndex + limit < total,
     };
-  }
-
-  getGroupedHealthTimeline(params: HealthRecordFilterParams): TimelineGroup[] {
-    const records = this.queryHealthRecords({ ...params, limit: 1000 }).data;
-    const groupsMap = new Map<string, HealthRecord[]>();
-
-    for (const record of records) {
-      const d = new Date(record.date);
-      const monthYearKey = `${d.toLocaleString('default', { month: 'long' })} ${d.getFullYear()}`;
-      if (!groupsMap.has(monthYearKey)) {
-        groupsMap.set(monthYearKey, []);
-      }
-      groupsMap.get(monthYearKey)!.push(record);
-    }
-
-    const result: TimelineGroup[] = [];
-    groupsMap.forEach((groupedRecords, monthYear) => {
-      const d = new Date(groupedRecords[0].date);
-      result.push({
-        monthYear,
-        year: d.getFullYear(),
-        month: d.getMonth() + 1,
-        records: groupedRecords,
-      });
-    });
-
-    return result;
   }
 
   getHealthRecordById(id: string): HealthRecord | undefined {

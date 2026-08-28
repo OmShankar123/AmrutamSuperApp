@@ -161,6 +161,7 @@
     "vitals": "Patient Vitals & Dosha Imbalance",
     "attachments": "Attachments & Scans",
     "downloadPdf": "Download PDF Report",
+    "downloadSuccess": "Medical report downloaded to your device storage.",
     "noRecords": "No Health Records Found",
     "noRecordsSub": "Your medical history, prescriptions, and lab tests will appear here chronologically."
   },

@@ -5,16 +5,32 @@ import {
   type PartialState,
 } from '@react-navigation/native';
 
+import { NAVIGATION } from './constants';
 import type { RootStackParamList } from './types';
 
 export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+const TAB_SCREENS: readonly string[] = [
+  NAVIGATION.DOCTOR_LIST,
+  NAVIGATION.PRODUCT_CATALOG,
+  NAVIGATION.TIMELINE,
+  NAVIGATION.UPCOMING_CONSULTATIONS,
+  NAVIGATION.CART,
+];
 
 export function navigate<RouteName extends keyof RootStackParamList>(
   name: RouteName,
   params?: RootStackParamList[RouteName],
 ): void {
   if (navigationRef.isReady()) {
-    navigationRef.navigate(name as any, params as any);
+    if (TAB_SCREENS.includes(name as string)) {
+      navigationRef.navigate(NAVIGATION.MAIN_TABS as any, {
+        screen: name,
+        params,
+      });
+    } else {
+      navigationRef.navigate(name as any, params as any);
+    }
   }
 }
 
@@ -32,11 +48,27 @@ export function resetRoot(state: PartialState<NavigationState> | NavigationState
 
 export function resetAndNavigate(routeName: keyof RootStackParamList): void {
   if (navigationRef.isReady()) {
-    navigationRef.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: routeName }],
-      }),
-    );
+    if (TAB_SCREENS.includes(routeName as string)) {
+      navigationRef.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            {
+              name: NAVIGATION.MAIN_TABS,
+              state: {
+                routes: [{ name: routeName }],
+              },
+            },
+          ],
+        }),
+      );
+    } else {
+      navigationRef.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: routeName }],
+        }),
+      );
+    }
   }
 }

@@ -106,21 +106,10 @@ export function handleMockRoute(config: InternalAxiosRequestConfig): AxiosRespon
       query: params.query,
       type: params.type,
       tag: params.tag,
-      year: params.year ? Number(params.year) : undefined,
-      month: params.month ? Number(params.month) : undefined,
       page: params.page ? Number(params.page) : 1,
       limit: params.limit ? Number(params.limit) : 20,
     });
     return createResponse(res);
-  }
-
-  if (url === '/health-records/timeline' && method === 'get') {
-    const groups = db.getGroupedHealthTimeline({
-      query: params.query,
-      type: params.type,
-      tag: params.tag,
-    });
-    return createResponse(groups);
   }
 
   const recordDetailMatch = url.match(/^\/health-records\/([^/]+)$/);
