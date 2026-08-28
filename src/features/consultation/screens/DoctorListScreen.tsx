@@ -411,7 +411,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   chipsScrollContent: {
     paddingHorizontal: ms(16),
-    gap: ms(8),
+    gap: ms(6),
   },
   filterBar: {
     flexDirection: 'row',

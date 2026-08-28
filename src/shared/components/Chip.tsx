@@ -43,13 +43,12 @@ export const Chip: FC<ChipProps> = ({
 
 const styles = StyleSheet.create((theme) => ({
   chip: {
-    paddingHorizontal: ms(14),
-    paddingVertical: ms(7),
+    paddingHorizontal: ms(11),
+    paddingVertical: ms(6),
     backgroundColor: theme.colors.surface,
     borderRadius: ms(20),
     borderWidth: 1,
     borderColor: theme.colors.border,
-    marginRight: ms(8),
   },
   chipSelected: {
     backgroundColor: theme.colors.primary,
@@ -63,11 +62,11 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
   },
   iconWrapper: {
-    marginRight: ms(6),
+    marginRight: ms(4),
   },
   text: {
     fontFamily: theme.fonts.semiBold,
-    fontSize: ms(13),
+    fontSize: ms(12.5),
     color: theme.colors.textSecondary,
   },
   textSelected: {

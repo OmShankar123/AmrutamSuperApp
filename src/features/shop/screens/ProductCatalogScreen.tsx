@@ -448,7 +448,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   chipsScrollContent: {
     paddingHorizontal: ms(16),
-    gap: ms(8),
+    gap: ms(6),
   },
   filterBar: {
     flexDirection: 'row',
@@ -523,7 +523,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: ms(16),
-    gap: ms(8),
+    gap: ms(6),
     width: '100%',
   },
   footerText: {
@@ -592,12 +592,12 @@ const styles = StyleSheet.create((theme, rt) => ({
   optionLeftRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ms(8),
+    gap: ms(6),
   },
   rowWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: ms(8),
+    gap: ms(6),
   },
   modalFooter: {
     flexDirection: 'row',

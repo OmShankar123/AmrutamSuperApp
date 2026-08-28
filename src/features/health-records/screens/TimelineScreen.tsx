@@ -319,7 +319,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   chipsScrollContent: {
     paddingHorizontal: ms(16),
-    gap: ms(8),
+    gap: ms(6),
   },
   listContent: {
     paddingHorizontal: ms(16),
@@ -443,7 +443,7 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: ms(16),
-    gap: ms(8),
+    gap: ms(6),
   },
   footerText: {
     color: theme.colors.textSecondary,
