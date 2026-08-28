@@ -74,6 +74,30 @@ module.exports = [
       'react-native-unistyles/no-unused-styles': 'error',
       'react/display-name': 'off',
       'react/no-inline-styles': 'off',
+
+      // RESTRICT REACT NATIVE STYLESHEET - MANDATE UNISTYLES
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'react-native',
+              importNames: ['StyleSheet'],
+              message:
+                "Please use unistyles StyleSheet instead: import { StyleSheet } from 'react-native-unistyles'",
+            },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.object.name='StyleSheet'][callee.property.name='create'] > ObjectExpression",
+          message:
+            'StyleSheet.create should use a callback function: StyleSheet.create((theme) => ({ ... }))',
+        },
+      ],
     },
   },
   {

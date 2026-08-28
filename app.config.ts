@@ -31,7 +31,20 @@ export default ({ config }: ConfigContext): ExpoConfig =>
       favicon: './assets/favicon.png',
     },
     plugins: [
-      'expo-font',
+      [
+        'expo-font',
+        {
+          fonts: [
+            './src/assets/fonts/OpenSans-Regular.ttf',
+            './src/assets/fonts/OpenSans-Italic.ttf',
+            './src/assets/fonts/OpenSans-Semibold.ttf',
+            './src/assets/fonts/OpenSans-SemiboldItalic.ttf',
+            './src/assets/fonts/OpenSans-Bold.ttf',
+            './src/assets/fonts/OpenSans-BoldItalic.ttf',
+          ],
+        },
+      ],
+      'expo-image',
       'expo-localization',
       'expo-secure-store',
       'expo-status-bar',
