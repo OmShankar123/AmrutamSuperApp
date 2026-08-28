@@ -7,6 +7,7 @@
       "@/*": ["./src/*"],
       "@env": ["./env"]
     },
+    "types": ["jest"],
     "esModuleInterop": true,
     "resolveJsonModule": true
   },

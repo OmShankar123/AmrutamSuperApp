@@ -125,7 +125,12 @@ export function DoctorListScreen(): React.JSX.Element {
               : t('consultation.title')}
           </Typography>
         </View>
-        <LanguageToggle />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: ms(8) }}>
+          <TouchableOpacity onPress={() => navigate(NAVIGATION.DEV_PANEL)} style={styles.devBtn}>
+            <Ionicons color={theme.colors.textSecondary} name="construct-outline" size={ms(18)} />
+          </TouchableOpacity>
+          <LanguageToggle />
+        </View>
       </View>
 
       {/* Search Bar Container with Live Debounce */}
@@ -397,6 +402,16 @@ export function DoctorListScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create((theme) => ({
+  devBtn: {
+    width: ms(32),
+    height: ms(32),
+    borderRadius: ms(16),
+    backgroundColor: theme.colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -577,3 +592,4 @@ const styles = StyleSheet.create((theme) => ({
     borderTopColor: theme.colors.border,
   },
 }));
+// devBtn definition

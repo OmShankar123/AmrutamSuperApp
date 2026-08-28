@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BookingConfirmationScreen } from '@/features/consultation/screens/BookingConfirmationScreen';
 import { DoctorDetailScreen } from '@/features/consultation/screens/DoctorDetailScreen';
 import { SlotBookingScreen } from '@/features/consultation/screens/SlotBookingScreen';
+import { DevPanelScreen } from '@/features/dev/screens/DevPanelScreen';
 import { RecordDetailScreen } from '@/features/health-records/screens/RecordDetailScreen';
 import { ProductDetailScreen } from '@/features/shop/screens/ProductDetailScreen';
 import { WishlistScreen } from '@/features/shop/screens/WishlistScreen';
@@ -56,6 +57,13 @@ export function RootNavigator(): React.JSX.Element {
           component={RecordDetailScreen}
           name={NAVIGATION.RECORD_DETAIL}
           options={{ animation: 'slide_from_right' }}
+        />
+
+        {/* Developer Diagnostics & Chaos Panel */}
+        <Stack.Screen
+          component={DevPanelScreen}
+          name={NAVIGATION.DEV_PANEL}
+          options={{ animation: 'slide_from_bottom', presentation: 'modal' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
