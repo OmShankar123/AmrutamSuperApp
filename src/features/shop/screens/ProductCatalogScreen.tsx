@@ -23,7 +23,7 @@ import { Typography } from '@/shared/components/Typography';
 import { useDebounce } from '@/shared/hooks';
 import { ms } from '@/shared/utils/scale';
 
-import { PRODUCT_CARD_HEIGHT, ProductCard } from '../components/ProductCard';
+import { ProductCard } from '../components/ProductCard';
 import { useInfiniteProducts } from '../hooks/useProducts';
 import { useCartStore } from '../store/useCartStore';
 import type { HealthConcern, Product, ProductCategory } from '../types';
@@ -128,15 +128,6 @@ export function ProductCatalogScreen(): React.JSX.Element {
   const renderItem = useCallback(
     ({ item }: { item: Product }) => <ProductCard onPress={handleProductPress} product={item} />,
     [handleProductPress],
-  );
-
-  const getItemLayout = useCallback(
-    (_: any, index: number) => ({
-      length: PRODUCT_CARD_HEIGHT + ms(12),
-      offset: (PRODUCT_CARD_HEIGHT + ms(12)) * Math.floor(index / 2),
-      index,
-    }),
-    [],
   );
 
   const renderFooter = () => {
@@ -283,7 +274,6 @@ export function ProductCatalogScreen(): React.JSX.Element {
             { paddingBottom: Math.max(rt.insets.bottom, ms(20)) },
           ]}
           data={products}
-          getItemLayout={getItemLayout}
           initialNumToRender={10}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
@@ -523,7 +513,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: ms(16),
-    gap: ms(6),
+    gap: ms(8),
     width: '100%',
   },
   footerText: {
@@ -592,12 +582,12 @@ const styles = StyleSheet.create((theme, rt) => ({
   optionLeftRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ms(6),
+    gap: ms(8),
   },
   rowWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: ms(6),
+    gap: ms(8),
   },
   modalFooter: {
     flexDirection: 'row',
