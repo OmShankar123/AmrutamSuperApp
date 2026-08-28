@@ -3,6 +3,7 @@ import { TouchableOpacity, View, type ViewStyle } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useNetworkStore } from '@/core/api/services/syncManager';
 import { goBack } from '@/navigation/navigationRef';
 import { ms } from '@/shared/utils/scale';
 
@@ -32,6 +33,8 @@ export const Header: FC<HeaderProps> = ({
   style,
 }) => {
   const { theme } = useUnistyles();
+  const isConnected = useNetworkStore((s) => s.isConnected);
+  const effectiveTopInset = withTopInset && isConnected;
 
   const handleBack = () => {
     if (onBack) {
@@ -47,7 +50,7 @@ export const Header: FC<HeaderProps> = ({
     <View
       style={[
         styles.container,
-        withTopInset && styles.topInset,
+        effectiveTopInset && styles.topInset,
         transparent && styles.transparent,
         style,
       ]}

@@ -2,6 +2,7 @@ import React, { type FC, type ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View, type ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
+import { useNetworkStore } from '@/core/api/services/syncManager';
 import { ms } from '@/shared/utils/scale';
 
 export interface ScreenWrapperProps {
@@ -23,12 +24,15 @@ export const ScreenWrapper: FC<ScreenWrapperProps> = ({
   withBottomInset = false,
   withHorizontalPadding = true,
 }) => {
+  const isConnected = useNetworkStore((s) => s.isConnected);
+  const effectiveTopInset = withTopInset && isConnected;
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[
         styles.root,
-        withTopInset && styles.topInset,
+        effectiveTopInset && styles.topInset,
         withBottomInset && styles.bottomInset,
         withHorizontalPadding && styles.horizontalPadding,
         style,
