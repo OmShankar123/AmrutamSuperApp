@@ -65,6 +65,24 @@ export const Button: FC<ButtonProps> = ({
     disabled: styles.disabledText,
   };
 
+  const getFallbackIconColor = () => {
+    if (showDisabledStyle) return theme.colors.textSecondary;
+    if (variant === 'outline' || variant === 'secondary') return theme.colors.primary;
+    return theme.colors.textInverse;
+  };
+
+  const renderIcon = (iconNode: ReactNode) => {
+    if (!iconNode) return null;
+    if (React.isValidElement(iconNode)) {
+      const element = iconNode as React.ReactElement<{ color?: string }>;
+      const targetColor = showDisabledStyle
+        ? theme.colors.textSecondary
+        : (element.props.color ?? getFallbackIconColor());
+      return React.cloneElement(element, { color: targetColor });
+    }
+    return iconNode;
+  };
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -91,7 +109,7 @@ export const Button: FC<ButtonProps> = ({
         />
       ) : (
         <View style={styles.contentRow}>
-          {leftIcon && <View style={styles.leftIconWrapper}>{leftIcon}</View>}
+          {leftIcon && <View style={styles.leftIconWrapper}>{renderIcon(leftIcon)}</View>}
           <Text
             style={[
               styles.textBase,
@@ -102,7 +120,7 @@ export const Button: FC<ButtonProps> = ({
           >
             {title}
           </Text>
-          {rightIcon && <View style={styles.rightIconWrapper}>{rightIcon}</View>}
+          {rightIcon && <View style={styles.rightIconWrapper}>{renderIcon(rightIcon)}</View>}
         </View>
       )}
     </Pressable>
