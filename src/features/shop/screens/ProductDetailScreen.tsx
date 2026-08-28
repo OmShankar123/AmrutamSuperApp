@@ -13,6 +13,7 @@ import type { RootStackParamList } from '@/navigation/types';
 import { Badge } from '@/shared/components/Badge';
 import { Button } from '@/shared/components/Button';
 import { Header } from '@/shared/components/Header';
+import { LoadingState } from '@/shared/components/LoadingState';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
 import { Typography } from '@/shared/components/Typography';
 import { ms } from '@/shared/utils/scale';
@@ -41,11 +42,14 @@ export function ProductDetailScreen(): React.JSX.Element {
   const handleAddToCart = () => {
     if (!product) return;
     setIsAdding(true);
-    addToCart(product, quantity);
     setTimeout(() => {
+      addToCart(product, quantity);
       setIsAdding(false);
       showSuccessToast(
-        `${quantity}x ${product.name} ${t('shop.addedToCart', 'added to cart')}`,
+        t('shop.addedToCartDesc', '{{quantity}}x {{name}} added to your bag', {
+          quantity,
+          name: product.name,
+        }),
         t('shop.addedToCart', 'Added to Cart'),
       );
     }, 350);
@@ -54,12 +58,8 @@ export function ProductDetailScreen(): React.JSX.Element {
   if (isLoading) {
     return (
       <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
-        <Header showBack title={t('shop.productDetails', 'Product Details')} />
-        <View style={styles.centered}>
-          <Typography color={theme.colors.textSecondary} variant="body">
-            {t('common.loading', 'Loading product...')}
-          </Typography>
-        </View>
+        <Header showBack title={t('shop.title', 'Product Details')} />
+        <LoadingState message={t('common.loading', 'Loading product details...')} />
       </ScreenWrapper>
     );
   }
@@ -67,7 +67,7 @@ export function ProductDetailScreen(): React.JSX.Element {
   if (isError || !product) {
     return (
       <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
-        <Header showBack title={t('shop.productDetails', 'Product Details')} />
+        <Header showBack title={t('shop.title', 'Product Details')} />
         <View style={styles.centered}>
           <Typography color={theme.colors.error} style={styles.errorText} variant="h3">
             {t('common.error', 'Product not found')}
@@ -78,185 +78,186 @@ export function ProductDetailScreen(): React.JSX.Element {
     );
   }
 
-  const wishlistAction = (
-    <TouchableOpacity
-      accessibilityLabel={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-      onPress={() => toggleWishlist(product)}
-      style={styles.wishlistBtn}
-    >
-      <Ionicons
-        color={isWishlisted ? theme.colors.error : theme.colors.text}
-        name={isWishlisted ? 'heart' : 'heart-outline'}
-        size={ms(20)}
-      />
-    </TouchableOpacity>
-  );
-
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
+      {/* Top Header with Share/Wishlist Action */}
       <Header
-        rightAction={wishlistAction}
+        rightAction={
+          <TouchableOpacity
+            accessibilityLabel={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+            onPress={() => toggleWishlist(product)}
+            style={styles.iconBtn}
+          >
+            <Ionicons
+              color={isWishlisted ? theme.colors.error : theme.colors.text}
+              name={isWishlisted ? 'heart' : 'heart-outline'}
+              size={ms(20)}
+            />
+          </TouchableOpacity>
+        }
         showBack
         subtitle={product.category}
         title={product.name}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Product Image Showcase */}
+        {/* Main Product Hero Image */}
         <View style={styles.imageContainer}>
           <Image
             cachePolicy="memory-disk"
             contentFit="cover"
             source={{ uri: product.imageUrl }}
             style={styles.image}
-            transition={300}
+            transition={150}
           />
           {product.discountPercentage > 0 && (
             <View style={styles.discountBadge}>
-              <Typography style={styles.discountText} variant="label">
+              <Typography style={styles.discountText} variant="caption">
                 {product.discountPercentage}% {t('shop.off', 'OFF')}
               </Typography>
             </View>
           )}
         </View>
 
-        {/* Core Product Information */}
-        <View style={styles.section}>
-          <View style={styles.tagRow}>
-            <Badge label={`🌿 ${product.category}`} variant="success" />
-            <Badge label={`⚖️ ${product.size}`} variant="neutral" />
-            {product.rating >= 4.5 && (
-              <Badge label={`⭐ ${t('shop.bestseller', 'Bestseller')}`} variant="warning" />
-            )}
+        <View style={styles.body}>
+          {/* Tags / Size Row */}
+          <View style={styles.tagsRow}>
+            <Badge label={product.category} variant="success" />
+            {product.size && <Badge label={product.size} variant="neutral" />}
           </View>
 
+          {/* Title & Subtitle */}
           <Typography style={styles.name} variant="h1">
             {product.name}
           </Typography>
+          {product.subtitle && (
+            <Typography style={styles.subtitle} variant="bodySmall">
+              {product.subtitle}
+            </Typography>
+          )}
 
-          <Typography style={styles.subtitle} variant="body">
-            {product.subtitle}
-          </Typography>
+          {/* Rating & Reviews */}
+          <View style={styles.ratingRow}>
+            <Ionicons color={theme.colors.secondary} name="star" size={ms(16)} />
+            <Typography style={styles.ratingText} variant="bodySemiBold">
+              {product.rating}
+            </Typography>
+            <Typography style={styles.reviewCount} variant="caption">
+              ({product.reviewCount} {t('consultation.reviews', 'Reviews')})
+            </Typography>
+          </View>
 
-          <View style={styles.ratingPriceRow}>
-            <View style={styles.ratingRow}>
-              <Ionicons color={theme.colors.secondary} name="star" size={ms(16)} />
-              <Typography style={styles.ratingVal} variant="bodySemiBold">
-                {product.rating}
-              </Typography>
-              <Typography style={styles.reviewsCount} variant="caption">
-                ({product.reviewCount} {t('common.reviews', 'reviews')})
-              </Typography>
-            </View>
-
+          {/* Price Card */}
+          <View style={styles.priceRow}>
             <View style={styles.priceWrap}>
-              <Typography style={styles.price} variant="price">
+              <Typography style={styles.currentPrice} variant="h1">
                 ₹{product.price}
               </Typography>
               {product.originalPrice > product.price && (
-                <Typography style={styles.originalPrice} variant="bodySmall">
+                <Typography style={styles.originalPrice} variant="bodyLarge">
                   ₹{product.originalPrice}
                 </Typography>
               )}
             </View>
+            <Badge
+              label={
+                product.inStock ? t('shop.inStock', 'In Stock') : t('shop.outOfStock', 'Sold Out')
+              }
+              variant={product.inStock ? 'success' : 'error'}
+            />
           </View>
-        </View>
 
-        {/* Stock Status */}
-        <View style={styles.stockCard}>
-          <Ionicons
-            color={product.inStock ? theme.colors.primary : theme.colors.error}
-            name={product.inStock ? 'checkmark-circle-outline' : 'close-circle-outline'}
-            size={ms(20)}
-          />
-          <View style={{ flex: 1, marginLeft: ms(8) }}>
-            <Typography variant="bodySmallSemiBold">
-              {product.inStock
-                ? t('shop.inStock', 'In Stock')
-                : t('shop.outOfStock', 'Out of Stock')}
-            </Typography>
-            <Typography style={styles.deliveryText} variant="caption">
-              {t('shop.freeDelivery', 'Free Delivery on orders above ₹500')}
-            </Typography>
-          </View>
-        </View>
-
-        {/* Description */}
-        <View style={styles.section}>
-          <Typography style={styles.sectionHeading} variant="h3">
-            {t('shop.description', 'Description')}
-          </Typography>
-          <Typography style={styles.bodyText} variant="body">
-            {product.description}
-          </Typography>
-        </View>
-
-        {/* Key Botanical Ingredients */}
-        <View style={styles.section}>
-          <Typography style={styles.sectionHeading} variant="h3">
-            {t('shop.ingredients', 'Key Botanical Ingredients')}
-          </Typography>
-          <View style={styles.chipsWrap}>
-            {product.ingredients.map((ing: string) => (
-              <Badge key={ing} label={`🌿 ${ing}`} variant="success" />
-            ))}
-          </View>
-        </View>
-
-        {/* Classical Benefits */}
-        <View style={styles.section}>
-          <Typography style={styles.sectionHeading} variant="h3">
-            {t('shop.benefits', 'Classical Benefits')}
-          </Typography>
-          {product.benefits.map((b: string) => (
-            <View key={b} style={styles.benefitRow}>
-              <Ionicons color={theme.colors.primary} name="checkmark" size={ms(16)} />
-              <Typography style={styles.benefitText} variant="body">
-                {b}
+          {/* AYUSH Trust Card */}
+          <View style={styles.trustCard}>
+            <Ionicons color={theme.colors.primary} name="shield-checkmark-outline" size={ms(20)} />
+            <View style={styles.trustCardContent}>
+              <Typography variant="bodySmallSemiBold">
+                {t('shop.ayushMinistryCertified', '100% Ayurvedic & AYUSH Certified')}
+              </Typography>
+              <Typography style={styles.trustCardSub} variant="caption">
+                {t('shop.freeDeliveryOnOrders', 'Free Delivery on orders above ₹500')}
               </Typography>
             </View>
-          ))}
-        </View>
+          </View>
 
-        {/* How to Use */}
-        <View style={styles.section}>
-          <Typography style={styles.sectionHeading} variant="h3">
-            {t('shop.howToUse', 'How to Use & Dosage')}
-          </Typography>
-          <View style={styles.howToUseCard}>
-            <Typography style={styles.bodyText} variant="body">
-              {product.howToUse}
+          {/* Description */}
+          <View style={styles.section}>
+            <Typography style={styles.sectionTitle} variant="h3">
+              {t('shop.description', 'Description')}
+            </Typography>
+            <Typography style={styles.descText} variant="body">
+              {product.description}
             </Typography>
           </View>
+
+          {/* Key Botanical Ingredients */}
+          {product.ingredients && product.ingredients.length > 0 && (
+            <View style={styles.section}>
+              <Typography style={styles.sectionTitle} variant="h3">
+                {t('shop.keyBotanicalIngredients', 'Key Botanical Ingredients')}
+              </Typography>
+              <View style={styles.chipGrid}>
+                {product.ingredients.map((ing, idx) => (
+                  <View key={idx} style={styles.ingredientChip}>
+                    <Ionicons color={theme.colors.primary} name="leaf-outline" size={ms(14)} />
+                    <Typography style={styles.ingredientText} variant="bodySmallSemiBold">
+                      {ing}
+                    </Typography>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Ayurvedic Health Benefits */}
+          {product.benefits && product.benefits.length > 0 && (
+            <View style={styles.section}>
+              <Typography style={styles.sectionTitle} variant="h3">
+                {t('shop.ayurvedicBenefits', 'Ayurvedic Health Benefits')}
+              </Typography>
+              {product.benefits.map((benefit, idx) => (
+                <View key={idx} style={styles.benefitRow}>
+                  <Ionicons color={theme.colors.primary} name="checkmark-circle" size={ms(16)} />
+                  <Typography style={styles.benefitText} variant="bodySmall">
+                    {benefit}
+                  </Typography>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* How to Use / Dosage */}
+          {product.howToUse && (
+            <View style={styles.section}>
+              <Typography style={styles.sectionTitle} variant="h3">
+                {t('shop.howToUse', 'How to Use / Dosage')}
+              </Typography>
+              <Typography style={styles.descText} variant="bodySmall">
+                {product.howToUse}
+              </Typography>
+            </View>
+          )}
         </View>
       </ScrollView>
 
-      {/* Bottom Floating Bar with Safe Inset */}
-      <View style={styles.bottomBar}>
-        {/* Quantity Stepper */}
-        <View style={styles.stepper}>
+      {/* Sticky Bottom CTA */}
+      <View style={styles.stickyFooter}>
+        <View style={styles.qtyContainer}>
           <TouchableOpacity
             disabled={quantity <= 1}
             onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-            style={styles.stepperBtn}
+            style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
           >
             <Ionicons color={theme.colors.text} name="remove" size={ms(16)} />
           </TouchableOpacity>
-
-          <Typography style={styles.qtyText} variant="bodySemiBold">
+          <Typography style={styles.qtyText} variant="bodyLargeSemiBold">
             {quantity}
           </Typography>
-
-          <TouchableOpacity
-            disabled={quantity >= (product.stockCount || 10)}
-            onPress={() => setQuantity((q) => Math.min(product.stockCount || 10, q + 1))}
-            style={styles.stepperBtn}
-          >
+          <TouchableOpacity onPress={() => setQuantity((q) => q + 1)} style={styles.qtyBtn}>
             <Ionicons color={theme.colors.text} name="add" size={ms(16)} />
           </TouchableOpacity>
         </View>
 
-        {/* Add to Cart CTA with Loader */}
         <Button
           disabled={!product.inStock}
           isLoading={isAdding}
@@ -264,9 +265,11 @@ export function ProductDetailScreen(): React.JSX.Element {
             <Ionicons color={theme.colors.textInverse} name="bag-handle-outline" size={ms(18)} />
           }
           onPress={handleAddToCart}
-          style={styles.addCartBtn}
-          title={t('shop.addToCart', 'Add to Cart')}
-          variant="primary"
+          style={styles.addToCartBtn}
+          title={
+            product.inStock ? t('shop.addToCart', 'Add to Cart') : t('shop.outOfStock', 'Sold Out')
+          }
+          variant={product.inStock ? 'primary' : 'disabled'}
         />
       </View>
     </ScreenWrapper>
@@ -274,7 +277,16 @@ export function ProductDetailScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create((theme, rt) => ({
-  wishlistBtn: {
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: ms(24),
+  },
+  errorText: {
+    marginBottom: ms(12),
+  },
+  iconBtn: {
     width: ms(36),
     height: ms(36),
     borderRadius: ms(18),
@@ -285,18 +297,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     justifyContent: 'center',
   },
   scrollContent: {
-    padding: ms(16),
-    paddingBottom: ms(120),
+    paddingBottom: ms(100),
   },
   imageContainer: {
     width: '100%',
-    height: ms(240),
-    borderRadius: theme.radius.lg,
-    overflow: 'hidden',
+    height: ms(320),
     backgroundColor: theme.colors.surfaceElevated,
     position: 'relative',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
   },
   image: {
     width: '100%',
@@ -304,152 +311,165 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   discountBadge: {
     position: 'absolute',
-    bottom: ms(12),
-    left: ms(12),
+    bottom: ms(16),
+    left: ms(16),
     backgroundColor: theme.colors.primary,
     paddingHorizontal: ms(10),
     paddingVertical: ms(5),
-    borderRadius: ms(6),
+    borderRadius: theme.radius.sm,
   },
   discountText: {
     color: theme.colors.textInverse,
     fontFamily: theme.fonts.bold,
   },
-  section: {
-    marginTop: ms(16),
+  body: {
+    padding: ms(16),
   },
-  tagRow: {
+  tagsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: ms(6),
+    alignItems: 'center',
+    gap: ms(8),
     marginBottom: ms(8),
   },
   name: {
-    fontSize: ms(20),
+    color: theme.colors.text,
+    marginBottom: ms(4),
   },
   subtitle: {
     color: theme.colors.textSecondary,
-    marginTop: ms(4),
-  },
-  ratingPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: ms(12),
-    paddingTop: ms(12),
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    marginBottom: ms(10),
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: ms(4),
+    marginBottom: ms(14),
   },
-  ratingVal: {
-    marginLeft: ms(4),
+  ratingText: {
+    color: theme.colors.text,
   },
-  reviewsCount: {
-    marginLeft: ms(6),
-    color: theme.colors.textTertiary,
+  reviewCount: {
+    color: theme.colors.textSecondary,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: ms(12),
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: ms(16),
   },
   priceWrap: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(6),
+    alignItems: 'baseline',
+    gap: ms(8),
   },
-  price: {
-    fontSize: ms(20),
+  currentPrice: {
+    color: theme.colors.primary,
   },
   originalPrice: {
-    textDecorationLine: 'line-through',
     color: theme.colors.textTertiary,
+    textDecorationLine: 'line-through',
   },
-  stockCard: {
+  trustCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
+    gap: ms(12),
+    backgroundColor: theme.colors.surfaceElevated,
     padding: ms(12),
-    marginTop: ms(16),
+    borderRadius: theme.radius.md,
+    marginBottom: ms(20),
     borderWidth: 1,
     borderColor: theme.colors.border,
-    boxShadow: theme.shadows.sm,
   },
-  deliveryText: {
+  trustCardContent: {
+    flex: 1,
+  },
+  trustCardSub: {
     color: theme.colors.textSecondary,
     marginTop: ms(2),
   },
-  sectionHeading: {
-    marginBottom: ms(8),
+  section: {
+    marginBottom: ms(20),
   },
-  bodyText: {
+  sectionTitle: {
+    marginBottom: ms(8),
+    color: theme.colors.text,
+  },
+  descText: {
+    color: theme.colors.textSecondary,
     lineHeight: ms(22),
   },
-  chipsWrap: {
+  chipGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: ms(8),
   },
-  benefitRow: {
+  ingredientChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ms(8),
-    marginVertical: ms(4),
-  },
-  benefitText: {
-    flex: 1,
-  },
-  howToUseCard: {
-    backgroundColor: theme.colors.surface,
+    gap: ms(6),
+    backgroundColor: theme.colors.surfaceElevated,
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(6),
     borderRadius: theme.radius.md,
-    padding: ms(14),
     borderWidth: 1,
     borderColor: theme.colors.border,
-    boxShadow: theme.shadows.sm,
   },
-  bottomBar: {
+  ingredientText: {
+    color: theme.colors.primaryDark,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: ms(8),
+    marginBottom: ms(6),
+  },
+  benefitText: {
+    color: theme.colors.textSecondary,
+    flex: 1,
+    lineHeight: ms(20),
+  },
+  stickyFooter: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: theme.colors.surface,
+    paddingHorizontal: ms(16),
+    paddingTop: ms(12),
+    paddingBottom: Math.max(rt.insets.bottom, ms(16)),
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: ms(20),
-    paddingTop: ms(12),
-    paddingBottom: Math.max(rt.insets.bottom, ms(16)),
-    boxShadow: theme.shadows.md,
     gap: ms(12),
+    boxShadow: theme.shadows.md,
   },
-  stepper: {
+  qtyContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surfaceElevated,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    paddingHorizontal: ms(4),
   },
-  stepperBtn: {
+  qtyBtn: {
     width: ms(36),
-    height: ms(38),
+    height: ms(44),
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  qtyBtnDisabled: {
+    opacity: 0.4,
   },
   qtyText: {
-    paddingHorizontal: ms(10),
+    paddingHorizontal: ms(8),
   },
-  addCartBtn: {
+  addToCartBtn: {
     flex: 1,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: ms(24),
-  },
-  errorText: {
-    marginBottom: ms(12),
   },
 }));

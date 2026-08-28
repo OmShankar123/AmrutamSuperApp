@@ -13,6 +13,7 @@ import type { RootStackParamList } from '@/navigation/types';
 import { Badge } from '@/shared/components/Badge';
 import { Button } from '@/shared/components/Button';
 import { Header } from '@/shared/components/Header';
+import { LoadingState } from '@/shared/components/LoadingState';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
 import { Typography } from '@/shared/components/Typography';
 import { ms } from '@/shared/utils/scale';
@@ -49,11 +50,7 @@ export function RecordDetailScreen(): React.JSX.Element {
     return (
       <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
         <Header showBack title={t('healthRecords.title', 'Health Record')} />
-        <View style={styles.centered}>
-          <Typography color={theme.colors.textSecondary} variant="body">
-            {t('common.loading', 'Loading health record...')}
-          </Typography>
-        </View>
+        <LoadingState message={t('common.loading', 'Loading health record...')} />
       </ScreenWrapper>
     );
   }
