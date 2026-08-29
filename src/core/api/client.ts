@@ -3,6 +3,7 @@ import axios from 'axios';
 
 import Env from '@env';
 import { logger } from '@/core/logger';
+import { showErrorToast } from '@/shared/utils/toast';
 
 import {
   chaosRequestInterceptor,
@@ -60,6 +61,13 @@ apiClient.interceptors.request.use(chaosRequestInterceptor, (error) => Promise.r
 
 apiClient.interceptors.response.use(chaosResponseInterceptor, (error) => {
   logger.error('API', error?.message ?? 'Unknown error');
+  const errorMsg =
+    error?.response?.data?.message || error?.message || 'An error occurred during API request';
+
+  // Show immediate error toast (suppress when offline since OfflineBanner is already visible)
+  if (!errorMsg.toLowerCase().includes('offline')) {
+    showErrorToast(errorMsg, 'API Error');
+  }
   return Promise.reject(error);
 });
 
