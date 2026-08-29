@@ -1,12 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  ScrollView,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -47,6 +40,7 @@ export function ProductCatalogScreen(): React.JSX.Element {
   const cartItems = useCartStore((s) => s.items);
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const wishlistItems = useWishlistStore((s) => s.items);
+  const categoryListRef = useRef<FlatList>(null);
 
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 350);
@@ -113,6 +107,15 @@ export function ProductCatalogScreen(): React.JSX.Element {
     setInStockOnly(false);
   };
 
+  const handleSelectCategory = (cat: ProductCategory | undefined, index: number) => {
+    setSelectedCategory(cat);
+    categoryListRef.current?.scrollToIndex({
+      index,
+      viewPosition: 0.5,
+      animated: true,
+    });
+  };
+
   const renderItem = useCallback(
     ({ item }: { item: Product }) => <ProductCard onPress={handleProductPress} product={item} />,
     [handleProductPress],
@@ -129,6 +132,22 @@ export function ProductCatalogScreen(): React.JSX.Element {
       </View>
     );
   };
+
+  const categoryItems = useMemo(
+    () => [
+      {
+        name: undefined,
+        label: t('shop.allCategories', 'All Categories'),
+        icon: 'grid-outline' as const,
+      },
+      ...CATEGORIES.map((c) => ({
+        name: c.name,
+        label: c.name,
+        icon: c.icon,
+      })),
+    ],
+    [t],
+  );
 
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset>
@@ -165,44 +184,42 @@ export function ProductCatalogScreen(): React.JSX.Element {
         title={t('shop.title', 'Ayurvedic Store')}
       />
 
-      {/* Horizontally Scrolling Category Chips */}
+      {/* Auto-Centering Category Chips */}
       <View style={styles.chipsWrapper}>
-        <ScrollView
+        <FlatList
           contentContainerStyle={styles.chipsScrollContent}
+          data={categoryItems}
           horizontal
-          showsHorizontalScrollIndicator={false}
-        >
-          <Chip
-            icon={
-              <Ionicons
-                color={!selectedCategory ? theme.colors.textInverse : theme.colors.textSecondary}
-                name="grid-outline"
-                size={ms(14)}
-              />
-            }
-            label={t('shop.allCategories', 'All Categories')}
-            onPress={() => setSelectedCategory(undefined)}
-            selected={!selectedCategory}
-          />
-          {CATEGORIES.map(({ name, icon }) => {
-            const isSelected = selectedCategory === name;
+          keyExtractor={(item, index) => `${item.name || 'all'}-${index}`}
+          onScrollToIndexFailed={(info) => {
+            setTimeout(() => {
+              categoryListRef.current?.scrollToIndex({
+                index: info.index,
+                viewPosition: 0.5,
+                animated: true,
+              });
+            }, 100);
+          }}
+          ref={categoryListRef}
+          renderItem={({ item, index }) => {
+            const isSelected = selectedCategory === item.name;
             return (
               <Chip
                 icon={
                   <Ionicons
                     color={isSelected ? theme.colors.textInverse : theme.colors.textSecondary}
-                    name={icon}
+                    name={item.icon}
                     size={ms(14)}
                   />
                 }
-                key={name}
-                label={name}
-                onPress={() => setSelectedCategory(isSelected ? undefined : name)}
+                label={item.label}
+                onPress={() => handleSelectCategory(item.name, index)}
                 selected={isSelected}
               />
             );
-          })}
-        </ScrollView>
+          }}
+          showsHorizontalScrollIndicator={false}
+        />
       </View>
 
       {/* Extracted Filter & Sort Bar */}

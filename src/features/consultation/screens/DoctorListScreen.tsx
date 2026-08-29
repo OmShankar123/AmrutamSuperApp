@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -40,6 +40,7 @@ const SPECIALIZATIONS: { name: Specialization; icon: keyof typeof Ionicons.glyph
 export function DoctorListScreen(): React.JSX.Element {
   const { theme, rt } = useUnistyles();
   const { t } = useLanguage();
+  const chipsListRef = useRef<FlatList>(null);
 
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 350);
@@ -95,6 +96,15 @@ export function DoctorListScreen(): React.JSX.Element {
     setAvailableToday(false);
   };
 
+  const handleSelectChip = (spec: Specialization | undefined, index: number) => {
+    setSelectedSpec(spec);
+    chipsListRef.current?.scrollToIndex({
+      index,
+      viewPosition: 0.5,
+      animated: true,
+    });
+  };
+
   const renderItem = useCallback(
     ({ item }: { item: Doctor }) => <DoctorCard onPress={handleDoctorPress} doctor={item} />,
     [handleDoctorPress],
@@ -111,6 +121,22 @@ export function DoctorListScreen(): React.JSX.Element {
       </View>
     );
   };
+
+  const chipItems = useMemo(
+    () => [
+      {
+        name: undefined,
+        label: t('consultation.allSpecializations', 'All Specializations'),
+        icon: 'medkit-outline' as const,
+      },
+      ...SPECIALIZATIONS.map((s) => ({
+        name: s.name,
+        label: s.name,
+        icon: s.icon,
+      })),
+    ],
+    [t],
+  );
 
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset>
@@ -130,44 +156,42 @@ export function DoctorListScreen(): React.JSX.Element {
         title={t('consultation.title', 'Ayurvedic Consultations')}
       />
 
-      {/* Horizontally Scrolling Specialization Filter Chips */}
+      {/* Auto-Centering Specialization Filter Chips */}
       <View style={styles.chipsWrapper}>
-        <ScrollView
+        <FlatList
           contentContainerStyle={styles.chipsScrollContent}
+          data={chipItems}
           horizontal
-          showsHorizontalScrollIndicator={false}
-        >
-          <Chip
-            icon={
-              <Ionicons
-                color={!selectedSpec ? theme.colors.textInverse : theme.colors.textSecondary}
-                name="medkit-outline"
-                size={ms(14)}
-              />
-            }
-            label={t('consultation.allSpecializations', 'All Specializations')}
-            onPress={() => setSelectedSpec(undefined)}
-            selected={!selectedSpec}
-          />
-          {SPECIALIZATIONS.map(({ name, icon }) => {
-            const isSelected = selectedSpec === name;
+          keyExtractor={(item, index) => `${item.name || 'all'}-${index}`}
+          onScrollToIndexFailed={(info) => {
+            setTimeout(() => {
+              chipsListRef.current?.scrollToIndex({
+                index: info.index,
+                viewPosition: 0.5,
+                animated: true,
+              });
+            }, 100);
+          }}
+          ref={chipsListRef}
+          renderItem={({ item, index }) => {
+            const isSelected = selectedSpec === item.name;
             return (
               <Chip
                 icon={
                   <Ionicons
                     color={isSelected ? theme.colors.textInverse : theme.colors.textSecondary}
-                    name={icon}
+                    name={item.icon}
                     size={ms(14)}
                   />
                 }
-                key={name}
-                label={name}
-                onPress={() => setSelectedSpec(isSelected ? undefined : name)}
+                label={item.label}
+                onPress={() => handleSelectChip(item.name, index)}
                 selected={isSelected}
               />
             );
-          })}
-        </ScrollView>
+          }}
+          showsHorizontalScrollIndicator={false}
+        />
       </View>
 
       {/* Filter & Sort Bar */}

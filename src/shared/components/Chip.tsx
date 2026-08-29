@@ -53,9 +53,10 @@ const styles = StyleSheet.create((theme) => ({
   chipSelected: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
+    boxShadow: theme.shadows.sm,
   },
   pressed: {
-    opacity: 0.8,
+    opacity: 0.75,
   },
   contentRow: {
     flexDirection: 'row',
