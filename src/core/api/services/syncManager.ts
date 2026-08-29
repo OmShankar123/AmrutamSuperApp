@@ -10,6 +10,7 @@ import {
 import { showErrorToast, showSuccessToast } from '@/shared/utils/toast';
 
 import { apiClient } from '../client';
+import { API_ENDPOINTS } from '../endpoints';
 
 interface NetworkState {
   isConnected: boolean;
@@ -53,9 +54,9 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
     for (const mutation of queue) {
       try {
         if (mutation.type === 'BOOK_CONSULTATION') {
-          await apiClient.post('/consultations/book', mutation.payload);
+          await apiClient.post(API_ENDPOINTS.BOOK_CONSULTATION, mutation.payload);
         } else if (mutation.type === 'CANCEL_CONSULTATION') {
-          await apiClient.post(`/consultations/${mutation.payload.bookingId}/cancel`);
+          await apiClient.post(API_ENDPOINTS.CANCEL_CONSULTATION(mutation.payload.bookingId));
         }
         removeQueuedMutation(mutation.id);
         successCount++;
