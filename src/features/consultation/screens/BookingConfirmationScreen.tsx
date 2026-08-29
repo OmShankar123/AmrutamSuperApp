@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 import type { RouteProp } from '@react-navigation/native';
@@ -22,7 +22,7 @@ type BookingConfirmationRouteProp = RouteProp<
 >;
 
 export function BookingConfirmationScreen(): React.JSX.Element {
-  const { theme } = useUnistyles();
+  const { theme, rt } = useUnistyles();
   const route = useRoute<BookingConfirmationRouteProp>();
   const { bookingId } = route.params;
   const { t } = useLanguage();
@@ -31,120 +31,131 @@ export function BookingConfirmationScreen(): React.JSX.Element {
   const booking = bookings?.find((b) => b.id === bookingId) ?? bookings?.[0];
 
   return (
-    <ScreenWrapper style={styles.container} withBottomInset withTopInset>
-      <View style={styles.content}>
-        <View style={styles.iconCircle}>
-          <Ionicons color={theme.colors.primary} name="checkmark-circle" size={ms(44)} />
-        </View>
-
-        <Typography variant="h1">
-          {t('consultation.appointmentConfirmed', 'Appointment Confirmed!')}
-        </Typography>
-        <Typography style={styles.subheading} variant="bodySmall">
-          {t(
-            'consultation.confirmationSub',
-            'Your consultation request has been registered in the Amrutam Ayurvedic network.',
-          )}
-        </Typography>
-
-        {booking && (
-          <View style={styles.receiptCard}>
-            <View style={styles.receiptRow}>
-              <Typography style={styles.receiptLabel} variant="caption">
-                {t('consultation.doctor', 'Doctor')}
-              </Typography>
-              <Typography variant="bodySmallSemiBold">{booking.doctorName}</Typography>
-            </View>
-            <View style={styles.receiptRow}>
-              <Typography style={styles.receiptLabel} variant="caption">
-                {t('consultation.specialization', 'Specialization')}
-              </Typography>
-              <Typography variant="bodySmallSemiBold">{booking.specialization}</Typography>
-            </View>
-            <View style={styles.receiptRow}>
-              <Typography style={styles.receiptLabel} variant="caption">
-                {t('consultation.dateTime', 'Date & Time')}
-              </Typography>
-              <Typography variant="bodySmallSemiBold">
-                {booking.date} at {booking.time}
-              </Typography>
-            </View>
-            <View style={styles.receiptRow}>
-              <Typography style={styles.receiptLabel} variant="caption">
-                {t('consultation.patient', 'Patient')}
-              </Typography>
-              <Typography variant="bodySmallSemiBold">
-                {booking.patientName} ({booking.patientAge}y)
-              </Typography>
-            </View>
-            <View style={styles.receiptRow}>
-              <Typography style={styles.receiptLabel} variant="caption">
-                {t('consultation.bookingId', 'Booking ID')}
-              </Typography>
-              <Typography style={styles.bookingIdText} variant="bodySmallSemiBold">
-                {booking.id}
-              </Typography>
-            </View>
-            <View style={[styles.receiptRow, styles.totalRow]}>
-              <Typography variant="h3">{t('consultation.feePaid', 'Fee Paid')}</Typography>
-              <Typography variant="price">₹{booking.consultationFee}</Typography>
-            </View>
+    <ScreenWrapper withBottomInset withHorizontalPadding={false} withTopInset>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(rt.insets.bottom, ms(20)) },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <View style={styles.iconCircle}>
+            <Ionicons color={theme.colors.primary} name="checkmark-circle" size={ms(44)} />
           </View>
-        )}
 
-        <View style={styles.tipsBox}>
-          <View style={styles.tipsHeaderRow}>
-            <Ionicons
-              color={theme.colors.primaryDark}
-              name="information-circle-outline"
-              size={ms(16)}
-            />
-            <Typography style={styles.tipsHeading} variant="label">
-              {t('consultation.preConsultationTips', 'Pre-Consultation Instructions')}
-            </Typography>
-          </View>
-          <Typography style={styles.tipsBody} variant="caption">
+          <Typography variant="h1">
+            {t('consultation.appointmentConfirmed', 'Appointment Confirmed!')}
+          </Typography>
+          <Typography style={styles.subheading} variant="bodySmall">
             {t(
-              'consultation.tipsBody',
-              'Keep your stomach light before the pulse evaluation.\nUpload your past health records in the Health Records tab.',
+              'consultation.confirmationSub',
+              'Your consultation request has been registered in the Amrutam Ayurvedic network.',
             )}
           </Typography>
-        </View>
-      </View>
 
-      <View style={styles.buttonGroup}>
-        <Button
-          leftIcon={<Ionicons color={theme.colors.textInverse} name="home-outline" size={ms(18)} />}
-          onPress={() => resetAndNavigate(NAVIGATION.MAIN_TABS)}
-          title={t('consultation.backToDoctors', 'Back to Doctors')}
-          variant="primary"
-        />
-      </View>
+          {booking && (
+            <View style={styles.receiptCard}>
+              <View style={styles.receiptRow}>
+                <Typography style={styles.receiptLabel} variant="caption">
+                  {t('consultation.doctor', 'Doctor')}
+                </Typography>
+                <Typography variant="bodySmallSemiBold">{booking.doctorName}</Typography>
+              </View>
+              <View style={styles.receiptRow}>
+                <Typography style={styles.receiptLabel} variant="caption">
+                  {t('consultation.specialization', 'Specialization')}
+                </Typography>
+                <Typography variant="bodySmallSemiBold">{booking.specialization}</Typography>
+              </View>
+              <View style={styles.receiptRow}>
+                <Typography style={styles.receiptLabel} variant="caption">
+                  {t('consultation.dateTime', 'Date & Time')}
+                </Typography>
+                <Typography variant="bodySmallSemiBold">
+                  {booking.date} at {booking.time}
+                </Typography>
+              </View>
+              <View style={styles.receiptRow}>
+                <Typography style={styles.receiptLabel} variant="caption">
+                  {t('consultation.patient', 'Patient')}
+                </Typography>
+                <Typography variant="bodySmallSemiBold">
+                  {booking.patientName} ({booking.patientAge}y)
+                </Typography>
+              </View>
+              <View style={styles.receiptRow}>
+                <Typography style={styles.receiptLabel} variant="caption">
+                  {t('consultation.bookingId', 'Booking ID')}
+                </Typography>
+                <Typography style={styles.bookingIdText} variant="bodySmallSemiBold">
+                  {booking.id}
+                </Typography>
+              </View>
+              <View style={[styles.receiptRow, styles.totalRow]}>
+                <Typography variant="h3">{t('consultation.feePaid', 'Fee Paid')}</Typography>
+                <Typography variant="price">₹{booking.consultationFee}</Typography>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.tipsBox}>
+            <View style={styles.tipsHeaderRow}>
+              <Ionicons
+                color={theme.colors.primaryDark}
+                name="information-circle-outline"
+                size={ms(16)}
+              />
+              <Typography style={styles.tipsHeading} variant="label">
+                {t('consultation.preConsultationTips', 'Pre-Consultation Instructions')}
+              </Typography>
+            </View>
+            <Typography style={styles.tipsBody} variant="caption">
+              {t(
+                'consultation.tipsBody',
+                'Keep your stomach light before the pulse evaluation.\nUpload your past health records in the Health Records tab.',
+              )}
+            </Typography>
+          </View>
+        </View>
+
+        <View style={styles.buttonGroup}>
+          <Button
+            leftIcon={
+              <Ionicons color={theme.colors.textInverse} name="home-outline" size={ms(18)} />
+            }
+            onPress={() => resetAndNavigate(NAVIGATION.MAIN_TABS)}
+            title={t('consultation.backToDoctors', 'Back to Doctors')}
+            variant="primary"
+          />
+        </View>
+      </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
-  container: {
+  scrollContent: {
+    flexGrow: 1,
     paddingHorizontal: ms(20),
     justifyContent: 'space-between',
   },
   content: {
     alignItems: 'center',
-    paddingTop: ms(24),
+    paddingTop: ms(16),
   },
   iconCircle: {
-    width: ms(72),
-    height: ms(72),
-    borderRadius: ms(36),
+    width: ms(68),
+    height: ms(68),
+    borderRadius: ms(34),
     backgroundColor: theme.colors.successLight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: ms(14),
+    marginBottom: ms(12),
   },
   subheading: {
     textAlign: 'center',
-    marginTop: ms(6),
+    marginTop: ms(4),
     lineHeight: ms(19),
     paddingHorizontal: ms(10),
   },
@@ -153,7 +164,7 @@ const styles = StyleSheet.create((theme) => ({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
     padding: ms(16),
-    marginTop: ms(20),
+    marginTop: ms(16),
     borderWidth: 1,
     borderColor: theme.colors.border,
     boxShadow: theme.shadows.sm,
@@ -161,7 +172,7 @@ const styles = StyleSheet.create((theme) => ({
   receiptRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: ms(7),
+    paddingVertical: ms(6),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.surfaceElevated,
   },
@@ -174,15 +185,15 @@ const styles = StyleSheet.create((theme) => ({
   },
   totalRow: {
     borderBottomWidth: 0,
-    paddingTop: ms(10),
+    paddingTop: ms(8),
     alignItems: 'center',
   },
   tipsBox: {
     width: '100%',
     backgroundColor: theme.colors.successLight,
     borderRadius: theme.radius.md,
-    padding: ms(14),
-    marginTop: ms(14),
+    padding: ms(12),
+    marginTop: ms(12),
     borderWidth: 1,
     borderColor: theme.colors.primaryLight,
   },
@@ -190,7 +201,7 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: ms(4),
-    marginBottom: ms(4),
+    marginBottom: ms(3),
   },
   tipsHeading: {
     color: theme.colors.primaryDark,
@@ -201,6 +212,7 @@ const styles = StyleSheet.create((theme) => ({
   },
   buttonGroup: {
     width: '100%',
-    paddingBottom: ms(16),
+    marginTop: ms(20),
+    paddingBottom: ms(8),
   },
 }));
