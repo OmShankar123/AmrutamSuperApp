@@ -105,4 +105,45 @@ describe('Doctor Consultation & Slot Conflict Engine', () => {
       });
     }).toThrow('EXPIRED_SLOT');
   });
+
+  test('throws DOUBLE_BOOKING error when patient tries to book another doctor at the exact same date and time', () => {
+    const doctors = db.getDoctors();
+    const docA = doctors[0];
+    const docB = doctors[1];
+
+    const targetDate = '2026-12-20';
+    const targetTime = '11:15 AM';
+
+    // Book Doctor A
+    db.bookSlot({
+      doctorId: docA.id,
+      doctorName: docA.name,
+      specialization: docA.specialization,
+      slotId: `slot_${docA.id}_${targetDate}_${targetTime}`,
+      date: targetDate,
+      time: targetTime,
+      patientName: 'Same Patient',
+      patientPhone: '+91 98765 43210',
+      patientAge: 29,
+      symptoms: 'Digestion',
+      consultationFee: docA.consultationFee,
+    });
+
+    // Attempt to book Doctor B at the exact same date & time
+    expect(() => {
+      db.bookSlot({
+        doctorId: docB.id,
+        doctorName: docB.name,
+        specialization: docB.specialization,
+        slotId: `slot_${docB.id}_${targetDate}_${targetTime}`,
+        date: targetDate,
+        time: targetTime,
+        patientName: 'Same Patient',
+        patientPhone: '+91 98765 43210',
+        patientAge: 29,
+        symptoms: 'Skin concern',
+        consultationFee: docB.consultationFee,
+      });
+    }).toThrow('DOUBLE_BOOKING');
+  });
 });

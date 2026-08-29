@@ -2,11 +2,12 @@ import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
-import { logger } from '@/core/logger';
+import { crashReporter } from '@/core/logger/crashReporter';
+import { Typography } from '@/shared/components/Typography';
 
 interface Props {
   children: ReactNode;
-  fallback?: (error: Error, reset: () => void) => ReactNode;
+  fallback?: ReactNode;
 }
 
 interface State {
@@ -15,39 +16,41 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+  public override state: State = {
+    hasError: false,
+    error: null,
+  };
 
-  static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    logger.error('ErrorBoundary', error.message, errorInfo.componentStack);
+  public override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    crashReporter.recordError(error, { extra: { componentStack: errorInfo.componentStack } });
   }
 
-  resetError = (): void => {
+  private handleReset = () => {
     this.setState({ hasError: false, error: null });
   };
 
-  render(): ReactNode {
+  public override render(): ReactNode {
     if (this.state.hasError) {
-      if (this.props.fallback && this.state.error) {
-        return this.props.fallback(this.state.error, this.resetError);
+      if (this.props.fallback) {
+        return this.props.fallback;
       }
 
       return (
         <View style={styles.container}>
-          <Text style={styles.icon}>⚠️</Text>
-          <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.subtitle}>
-            {this.state.error?.message ?? 'An unexpected error occurred in the application.'}
-          </Text>
+          <Typography style={styles.title} variant="h2">
+            Something went wrong
+          </Typography>
+          <Typography style={styles.message} variant="bodySmall">
+            {this.state.error?.message ?? 'An unexpected error occurred.'}
+          </Typography>
           <TouchableOpacity
+            accessibilityLabel="Try Again"
             accessibilityRole="button"
-            onPress={this.resetError}
+            onPress={this.handleReset}
             style={styles.button}
           >
             <Text style={styles.buttonText}>Try Again</Text>
@@ -68,33 +71,23 @@ const styles = StyleSheet.create((theme) => ({
     padding: 24,
     backgroundColor: theme.colors.background,
   },
-  icon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: theme.colors.text,
+    color: theme.colors.error,
     marginBottom: 8,
-    textAlign: 'center',
   },
-  subtitle: {
-    fontSize: 14,
+  message: {
     color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 24,
-    lineHeight: 20,
   },
   button: {
     backgroundColor: theme.colors.primary,
+    paddingHorizontal: 24,
     paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 12,
+    borderRadius: theme.radius.md,
   },
   buttonText: {
     color: theme.colors.textInverse,
-    fontSize: 16,
-    fontWeight: '600',
+    fontFamily: theme.fonts.bold,
   },
 }));

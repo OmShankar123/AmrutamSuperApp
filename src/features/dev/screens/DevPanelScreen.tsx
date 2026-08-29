@@ -1,14 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, Switch, TouchableOpacity, View } from 'react-native';
-import { StyleSheet, useUnistyles } from 'react-native-unistyles';
+import { StyleSheet, UnistylesRuntime, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
 import type { ChaosConfig } from '@/core/api/interceptors/chaos';
 import { getChaosConfig, setChaosConfig } from '@/core/api/interceptors/chaos';
 import { useNetworkStore } from '@/core/api/services/syncManager';
+import { useFeatureFlags } from '@/core/config/featureFlags';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { queryClient } from '@/core/providers/QueryProvider';
-import { appStorage } from '@/core/storage';
+import { clearMutationQueue } from '@/core/storage/queue';
+import { useCartStore } from '@/features/shop/store/useCartStore';
+import { useWishlistStore } from '@/features/shop/store/useWishlistStore';
 import { Button } from '@/shared/components/Button';
 import { Header } from '@/shared/components/Header';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
@@ -19,64 +22,170 @@ import { showSuccessToast } from '@/shared/utils/toast';
 export function DevPanelScreen(): React.JSX.Element {
   const { theme } = useUnistyles();
   const { t } = useLanguage();
-  const [chaos, setChaosState] = useState<ChaosConfig>(() => getChaosConfig());
+  const [chaos, setChaos] = useState<ChaosConfig>(getChaosConfig);
   const isConnected = useNetworkStore((s) => s.isConnected);
   const setNetworkState = useNetworkStore((s) => s.setNetworkState);
 
-  const latencyPresets = useMemo(
-    () => [
-      { label: t('dev.presetFast', '0ms (Fast)'), val: 0 },
-      { label: t('dev.presetNormal', '350ms (Normal)'), val: 350 },
-      { label: t('dev.presetSlow', '1000ms (3G Slow)'), val: 1000 },
-      { label: t('dev.presetFlaky', '2500ms (2G Flaky)'), val: 2500 },
-    ],
-    [t],
-  );
+  const { flags, setFlag } = useFeatureFlags();
 
-  const errorRatePresets = useMemo(
-    () => [
-      { label: t('dev.rateStable', '0% (Stable)'), val: 0 },
-      { label: t('dev.rateOccasional', '10% (Occasional)'), val: 0.1 },
-      { label: t('dev.rateUnstable', '25% (Unstable)'), val: 0.25 },
-      { label: t('dev.rateHigh', '50% (High Failure)'), val: 0.5 },
-    ],
-    [t],
-  );
+  const [activeTheme, setActiveTheme] = useState<'light' | 'dark' | 'system'>(() => {
+    if (UnistylesRuntime.hasAdaptiveThemes) return 'system';
+    return (UnistylesRuntime.themeName as 'light' | 'dark') || 'light';
+  });
 
-  const updateChaos = (partial: Partial<ChaosConfig>) => {
-    setChaosConfig(partial);
-    setChaosState((prev) => ({ ...prev, ...partial }));
+  const updateChaos = (patch: Partial<ChaosConfig>) => {
+    setChaosConfig(patch);
+    setChaos(getChaosConfig());
   };
 
   const toggleForceOffline = (val: boolean) => {
-    updateChaos({ offline: val });
+    updateChaos({ enabled: true, offline: val });
     setNetworkState(!val, !val);
-    showSuccessToast(
-      val
-        ? t('dev.offlineEnabled', 'Simulated offline mode enabled')
-        : t('dev.onlineRestored', 'Simulated online mode restored'),
-      t('dev.networkStateChanged', 'Network State Changed'),
-    );
+  };
+
+  const handleSelectTheme = (mode: 'light' | 'dark' | 'system') => {
+    setActiveTheme(mode);
+    if (mode === 'system') {
+      UnistylesRuntime.setAdaptiveThemes(true);
+    } else {
+      UnistylesRuntime.setAdaptiveThemes(false);
+      UnistylesRuntime.setTheme(mode);
+    }
+    showSuccessToast(`Theme changed to ${mode.toUpperCase()}`, 'Theme Updated');
   };
 
   const handleResetCache = () => {
     queryClient.clear();
-    appStorage.clearAll();
+    clearMutationQueue();
+    useCartStore.getState().clearCart();
+    useWishlistStore.getState().clearWishlist();
     showSuccessToast(
-      t('dev.resetSuccess', 'Query cache & local MMKV storage wiped'),
-      t('dev.resetComplete', 'Reset Complete'),
+      t('dev.cacheWiped', 'TanStack Cache, MMKV Mutation Queue, Cart, and Wishlist reset!'),
+      t('dev.wiped', 'Wiped'),
     );
   };
 
+  const latencyPresets = [
+    { label: t('dev.zeroDelay', '0ms (Fast)'), val: 0 },
+    { label: t('dev.normalWifi', '350ms (Normal 4G)'), val: 350 },
+    { label: t('dev.slow3g', '2000ms (Slow 3G)'), val: 2000 },
+    { label: t('dev.edge2g', '4000ms (2G Network)'), val: 4000 },
+  ];
+
+  const errorRatePresets = [
+    { label: t('dev.zeroErrors', '0% (Stable)'), val: 0 },
+    { label: t('dev.tenPercent', '10% (Flaky)'), val: 0.1 },
+    { label: t('dev.twentyFivePercent', '25% (Degraded)'), val: 0.25 },
+    { label: t('dev.fiftyPercent', '50% (High Failure)'), val: 0.5 },
+  ];
+
+  const themeOptions: {
+    label: string;
+    mode: 'light' | 'dark' | 'system';
+    icon: keyof typeof Ionicons.glyphMap;
+  }[] = [
+    { label: t('dev.light', 'Light'), mode: 'light', icon: 'sunny-outline' },
+    { label: t('dev.dark', 'Dark'), mode: 'dark', icon: 'moon-outline' },
+    { label: t('dev.system', 'System'), mode: 'system', icon: 'phone-portrait-outline' },
+  ];
+
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
-      <Header
-        showBack
-        subtitle={t('dev.subtitle', 'API Simulation & Diagnostics')}
-        title={t('dev.title', 'Chaos & Dev Panel')}
-      />
+      <Header showClose title={t('dev.title', 'Developer & Chaos Panel')} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Theme Switcher (Dark Mode Toggle) */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons color={theme.colors.primary} name="color-palette-outline" size={ms(18)} />
+            <Typography variant="h3">{t('dev.themeMode', 'App Theme Mode')}</Typography>
+          </View>
+          <Typography style={styles.sectionDesc} variant="caption">
+            {t('dev.themeModeSub', 'Switch between Light, Dark, or System Adaptive theme')}
+          </Typography>
+
+          <View style={styles.presetGrid}>
+            {themeOptions.map((opt) => {
+              const isSelected = activeTheme === opt.mode;
+              return (
+                <TouchableOpacity
+                  key={opt.mode}
+                  onPress={() => handleSelectTheme(opt.mode)}
+                  style={[styles.presetChip, isSelected && styles.presetChipActive]}
+                >
+                  <Ionicons
+                    color={isSelected ? theme.colors.textInverse : theme.colors.textSecondary}
+                    name={opt.icon}
+                    size={ms(14)}
+                  />
+                  <Typography
+                    style={isSelected ? styles.presetTextActive : styles.presetText}
+                    variant="bodySmallSemiBold"
+                  >
+                    {opt.label}
+                  </Typography>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Remote Feature Flags Card */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons color={theme.colors.primary} name="flag-outline" size={ms(18)} />
+            <Typography variant="h3">Remote Feature Flags</Typography>
+          </View>
+          <Typography style={styles.sectionDesc} variant="caption">
+            Toggle dynamic app features and promotional campaigns in real-time
+          </Typography>
+
+          <View style={styles.flagRow}>
+            <View style={styles.flagLabelWrap}>
+              <Typography variant="bodySmallSemiBold">AYUSH 10% Discount</Typography>
+              <Typography style={styles.flagDesc} variant="caption">
+                Enables 10% promotional campaign discount in Shop Cart
+              </Typography>
+            </View>
+            <Switch
+              onValueChange={(val) => setFlag('enableAyushDiscount', val)}
+              thumbColor={flags.enableAyushDiscount ? theme.colors.primary : theme.colors.border}
+              trackColor={{ false: theme.colors.surfaceElevated, true: theme.colors.primaryLight }}
+              value={flags.enableAyushDiscount}
+            />
+          </View>
+
+          <View style={styles.flagRow}>
+            <View style={styles.flagLabelWrap}>
+              <Typography variant="bodySmallSemiBold">PDF Report Export</Typography>
+              <Typography style={styles.flagDesc} variant="caption">
+                Enables client-side PDF medical summary export in Health Records
+              </Typography>
+            </View>
+            <Switch
+              onValueChange={(val) => setFlag('enablePdfExport', val)}
+              thumbColor={flags.enablePdfExport ? theme.colors.primary : theme.colors.border}
+              trackColor={{ false: theme.colors.surfaceElevated, true: theme.colors.primaryLight }}
+              value={flags.enablePdfExport}
+            />
+          </View>
+
+          <View style={styles.flagRow}>
+            <View style={styles.flagLabelWrap}>
+              <Typography variant="bodySmallSemiBold">Doctor Rating Sort</Typography>
+              <Typography style={styles.flagDesc} variant="caption">
+                Enables the top ratings sort algorithm in Consultation catalog
+              </Typography>
+            </View>
+            <Switch
+              onValueChange={(val) => setFlag('enableDoctorRatingSort', val)}
+              thumbColor={flags.enableDoctorRatingSort ? theme.colors.primary : theme.colors.border}
+              trackColor={{ false: theme.colors.surfaceElevated, true: theme.colors.primaryLight }}
+              value={flags.enableDoctorRatingSort}
+            />
+          </View>
+        </View>
+
         {/* Chaos Mode Master Switch */}
         <View style={styles.card}>
           <View style={styles.rowBetween}>
@@ -279,9 +388,12 @@ const styles = StyleSheet.create((theme) => ({
   },
   presetChip: {
     flex: 1,
-    minWidth: '45%',
+    minWidth: '30%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: ms(4),
     paddingVertical: ms(10),
-    paddingHorizontal: ms(12),
+    paddingHorizontal: ms(10),
     backgroundColor: theme.colors.surfaceElevated,
     borderRadius: theme.radius.md,
     alignItems: 'center',
@@ -297,6 +409,22 @@ const styles = StyleSheet.create((theme) => ({
   },
   presetTextActive: {
     color: theme.colors.textInverse,
+  },
+  flagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: ms(10),
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.surfaceElevated,
+  },
+  flagLabelWrap: {
+    flex: 1,
+    paddingRight: ms(12),
+  },
+  flagDesc: {
+    color: theme.colors.textSecondary,
+    marginTop: ms(2),
   },
   diagRow: {
     flexDirection: 'row',

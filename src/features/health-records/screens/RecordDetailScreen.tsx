@@ -6,6 +6,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
 
+import { useFeatureFlags } from '@/core/config/featureFlags';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { useCartStore } from '@/features/shop/store/useCartStore';
 import { NAVIGATION } from '@/navigation/constants';
@@ -38,6 +39,8 @@ export function RecordDetailScreen(): React.JSX.Element {
   const [selectedImage, setSelectedImage] = useState<RecordAttachment | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRefilling, setIsRefilling] = useState(false);
+
+  const enablePdfExport = useFeatureFlags((s) => s.flags.enablePdfExport);
 
   const handleDownloadPdf = async () => {
     if (!record) return;
@@ -310,14 +313,18 @@ export function RecordDetailScreen(): React.JSX.Element {
         )}
 
         {/* Download PDF Button */}
-        <Button
-          isLoading={isDownloading}
-          leftIcon={<Ionicons color={theme.colors.primary} name="download-outline" size={ms(18)} />}
-          onPress={handleDownloadPdf}
-          style={styles.downloadBtn}
-          title={t('healthRecords.downloadPdf', 'Download PDF Report')}
-          variant="outline"
-        />
+        {enablePdfExport && (
+          <Button
+            isLoading={isDownloading}
+            leftIcon={
+              <Ionicons color={theme.colors.primary} name="download-outline" size={ms(18)} />
+            }
+            onPress={handleDownloadPdf}
+            style={styles.downloadBtn}
+            title={t('healthRecords.downloadPdf', 'Download PDF Report')}
+            variant="outline"
+          />
+        )}
       </ScrollView>
 
       {/* Fullscreen Image Preview Modal */}

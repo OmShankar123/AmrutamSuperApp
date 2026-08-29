@@ -118,7 +118,7 @@ export function TimelineScreen(): React.JSX.Element {
           {showHeader && (
             <View style={styles.stickyHeader}>
               <Ionicons color={theme.colors.primary} name="calendar" size={ms(14)} />
-              <Typography style={styles.stickyHeaderText} variant="label">
+              <Typography numberOfLines={1} style={styles.stickyHeaderText} variant="label">
                 {item.monthYearGroup}
               </Typography>
             </View>
@@ -336,10 +336,11 @@ const styles = StyleSheet.create((theme) => ({
   stickyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: ms(6),
     backgroundColor: theme.colors.surfaceElevated,
-    paddingVertical: ms(6),
-    paddingHorizontal: ms(12),
+    paddingVertical: ms(5),
+    paddingHorizontal: ms(10),
     borderRadius: theme.radius.sm,
     marginVertical: ms(8),
     borderLeftWidth: 3,

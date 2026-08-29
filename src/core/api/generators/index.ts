@@ -132,6 +132,16 @@ class InMemoryDatabase {
       throw new Error('EXPIRED_SLOT: This appointment time slot has already expired.');
     }
 
+    // Handle Double Booking / Patient Schedule Overlap across different doctors
+    const existingPatientBooking = Array.from(this.bookings.values()).find(
+      (b) => b.date === booking.date && b.time === booking.time && b.status === 'confirmed',
+    );
+    if (existingPatientBooking) {
+      throw new Error(
+        `DOUBLE_BOOKING: You already have a confirmed consultation with Dr. ${existingPatientBooking.doctorName} on ${booking.date} at ${booking.time}.`,
+      );
+    }
+
     const bookingId = `book_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const createdBooking: Booking = {
       ...booking,

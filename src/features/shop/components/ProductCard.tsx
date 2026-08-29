@@ -1,5 +1,13 @@
-import React, { memo } from 'react';
+import React, { memo, useEffect } from 'react';
 import { Pressable, TouchableOpacity, View } from 'react-native';
+import Animated, {
+  Easing,
+  FadeIn,
+  FadeOut,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -20,6 +28,9 @@ interface ProductCardProps {
 
 export const PRODUCT_CARD_HEIGHT = ms(270);
 
+const COLLAPSED_WIDTH = ms(32);
+const EXPANDED_WIDTH = ms(82);
+
 export const ProductCard = memo(function ProductCard({
   product,
   onPress,
@@ -33,6 +44,20 @@ export const ProductCard = memo(function ProductCard({
 
   const toggleWishlist = useWishlistStore((s) => s.toggleWishlist);
   const isWishlisted = useWishlistStore((s) => s.items.some((i) => i.id === product.id));
+
+  // Smooth linear width expansion/shrink (NO bouncy spring)
+  const buttonWidth = useSharedValue(cartQuantity > 0 ? EXPANDED_WIDTH : COLLAPSED_WIDTH);
+
+  useEffect(() => {
+    buttonWidth.value = withTiming(cartQuantity > 0 ? EXPANDED_WIDTH : COLLAPSED_WIDTH, {
+      duration: 200,
+      easing: Easing.out(Easing.quad),
+    });
+  }, [cartQuantity, buttonWidth]);
+
+  const animatedButtonContainer = useAnimatedStyle(() => ({
+    width: buttonWidth.value,
+  }));
 
   return (
     <Pressable
@@ -93,7 +118,7 @@ export const ProductCard = memo(function ProductCard({
           {product.name}
         </Typography>
 
-        {/* Price Row & Add / Stepper Button */}
+        {/* Price Row & Smooth Expanding/Collapsing Button */}
         <View style={styles.footer}>
           <View>
             <Typography variant="price">₹{product.price}</Typography>
@@ -106,37 +131,49 @@ export const ProductCard = memo(function ProductCard({
 
           {!product.inStock ? (
             <Badge label={t('shop.outOfStock', 'Sold Out')} variant="error" />
-          ) : cartQuantity > 0 ? (
-            <View style={styles.qtyStepper}>
-              <TouchableOpacity
-                accessibilityLabel="Decrease quantity"
-                onPress={() => updateQuantity(product.id, cartQuantity - 1)}
-                style={styles.stepperBtn}
-              >
-                <Ionicons color={theme.colors.textInverse} name="remove" size={ms(13)} />
-              </TouchableOpacity>
-              <View style={styles.qtyCountWrap}>
-                <Ionicons color={theme.colors.textInverse} name="bag-handle" size={ms(11)} />
-                <Typography style={styles.qtyCountText} variant="caption">
-                  {cartQuantity}
-                </Typography>
-              </View>
-              <TouchableOpacity
-                accessibilityLabel="Increase quantity"
-                onPress={() => addToCart(product, 1)}
-                style={styles.stepperBtn}
-              >
-                <Ionicons color={theme.colors.textInverse} name="add" size={ms(13)} />
-              </TouchableOpacity>
-            </View>
           ) : (
-            <TouchableOpacity
-              accessibilityLabel="Add to Cart"
-              onPress={() => addToCart(product, 1)}
-              style={styles.addBtn}
-            >
-              <Ionicons color={theme.colors.textInverse} name="add" size={ms(18)} />
-            </TouchableOpacity>
+            <Animated.View style={[styles.cartActionBox, animatedButtonContainer]}>
+              {cartQuantity > 0 ? (
+                <Animated.View
+                  entering={FadeIn.duration(150)}
+                  exiting={FadeOut.duration(100)}
+                  style={styles.stepperInner}
+                >
+                  <TouchableOpacity
+                    accessibilityLabel="Decrease quantity"
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 4 }}
+                    onPress={() => updateQuantity(product.id, cartQuantity - 1)}
+                    style={styles.stepperBtn}
+                  >
+                    <Ionicons color={theme.colors.textInverse} name="remove" size={ms(13)} />
+                  </TouchableOpacity>
+
+                  <View style={styles.qtyCountWrap}>
+                    <Ionicons color={theme.colors.textInverse} name="bag-handle" size={ms(11)} />
+                    <Typography style={styles.qtyCountText} variant="caption">
+                      {cartQuantity}
+                    </Typography>
+                  </View>
+
+                  <TouchableOpacity
+                    accessibilityLabel="Increase quantity"
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 6 }}
+                    onPress={() => addToCart(product, 1)}
+                    style={styles.stepperBtn}
+                  >
+                    <Ionicons color={theme.colors.textInverse} name="add" size={ms(13)} />
+                  </TouchableOpacity>
+                </Animated.View>
+              ) : (
+                <TouchableOpacity
+                  accessibilityLabel="Add to Cart"
+                  onPress={() => addToCart(product, 1)}
+                  style={styles.singleAddBtn}
+                >
+                  <Ionicons color={theme.colors.textInverse} name="add" size={ms(18)} />
+                </TouchableOpacity>
+              )}
+            </Animated.View>
           )}
         </View>
       </View>
@@ -234,26 +271,31 @@ const styles = StyleSheet.create((theme) => ({
     textDecorationLine: 'line-through',
     color: theme.colors.textTertiary,
   },
-  addBtn: {
-    backgroundColor: theme.colors.primary,
-    width: ms(32),
+  cartActionBox: {
     height: ms(32),
+    backgroundColor: theme.colors.primary,
     borderRadius: ms(16),
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  qtyStepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.primary,
-    borderRadius: ms(20),
-    paddingHorizontal: ms(4),
-    paddingVertical: ms(3),
-    gap: ms(2),
+    overflow: 'hidden',
     boxShadow: theme.shadows.sm,
   },
+  singleAddBtn: {
+    width: ms(32),
+    height: ms(32),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperInner: {
+    width: '100%',
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: ms(4),
+  },
   stepperBtn: {
-    padding: ms(3),
+    padding: ms(4),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -261,7 +303,7 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: ms(3),
-    paddingHorizontal: ms(4),
+    paddingHorizontal: ms(2),
   },
   qtyCountText: {
     color: theme.colors.textInverse,

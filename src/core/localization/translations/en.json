@@ -213,6 +213,11 @@
     "rateStable": "0% (Stable)",
     "rateOccasional": "10% (Occasional)",
     "rateUnstable": "25% (Unstable)",
-    "rateHigh": "50% (High Failure)"
+    "rateHigh": "50% (High Failure)",
+    "themeMode": "App Theme Mode",
+    "themeModeSub": "Switch between Light, Dark, or System Adaptive theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
   }
 }

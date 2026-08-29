@@ -2,6 +2,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { create } from 'zustand';
 
 import { logger } from '@/core/logger';
+import { queryClient } from '@/core/providers/QueryProvider';
 import {
   getMutationQueue,
   removeQueuedMutation,
@@ -70,6 +71,10 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
         }
       }
     }
+
+    // Refresh query caches for consultations and records
+    queryClient.invalidateQueries({ queryKey: ['consultations'] });
+    queryClient.invalidateQueries({ queryKey: ['health-records'] });
 
     set({ isSyncing: false, pendingSyncCount: getMutationQueue().length });
 

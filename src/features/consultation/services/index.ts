@@ -1,5 +1,7 @@
 import { apiClient, type PaginatedResponse } from '@/core/api/client';
 import { API_ENDPOINTS } from '@/core/api/endpoints';
+import { useNetworkStore } from '@/core/api/services/syncManager';
+import { enqueueMutation } from '@/core/storage/queue';
 
 import type { Booking, Doctor, DoctorFilterParams, Slot } from '../types';
 
@@ -23,11 +25,38 @@ export async function fetchDoctorSlots(doctorId: string, date: string): Promise<
 export async function bookConsultationSlot(
   data: Omit<Booking, 'id' | 'bookedAt' | 'status'>,
 ): Promise<Booking> {
+  // If offline, enqueue mutation for background sync & return optimistic booking
+  if (!useNetworkStore.getState().isConnected) {
+    enqueueMutation({
+      type: 'BOOK_CONSULTATION',
+      payload: data,
+    });
+    useNetworkStore.getState().updatePendingCount();
+
+    const optimisticBooking: Booking = {
+      ...data,
+      id: `book_offline_${Date.now()}`,
+      bookedAt: new Date().toISOString(),
+      status: 'confirmed',
+    };
+    return optimisticBooking;
+  }
+
   const res = await apiClient.post<Booking>(API_ENDPOINTS.BOOK_CONSULTATION, data);
   return res.data;
 }
 
 export async function cancelConsultationBooking(bookingId: string): Promise<{ success: boolean }> {
+  // If offline, enqueue cancellation for background sync
+  if (!useNetworkStore.getState().isConnected) {
+    enqueueMutation({
+      type: 'CANCEL_CONSULTATION',
+      payload: { bookingId },
+    });
+    useNetworkStore.getState().updatePendingCount();
+    return { success: true };
+  }
+
   const res = await apiClient.post<{ success: boolean }>(
     API_ENDPOINTS.CANCEL_CONSULTATION(bookingId),
   );

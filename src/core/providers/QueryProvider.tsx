@@ -2,7 +2,6 @@ import React from 'react';
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { logger } from '@/core/logger';
-import { showErrorToast } from '@/shared/utils/toast';
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -10,10 +9,6 @@ const queryClient = new QueryClient({
       const message =
         error?.response?.data?.message || error?.message || 'An error occurred while fetching data';
       logger.error('QueryCache', message);
-      // Suppress toast if offline since OfflineBanner already informs the user
-      if (!message.includes('offline')) {
-        showErrorToast(message, 'Network Error');
-      }
     },
   }),
   mutationCache: new MutationCache({
@@ -23,7 +18,6 @@ const queryClient = new QueryClient({
         error?.message ||
         'The requested action could not be completed';
       logger.error('MutationCache', message);
-      showErrorToast(message, 'Action Failed');
     },
   }),
   defaultOptions: {
@@ -33,7 +27,7 @@ const queryClient = new QueryClient({
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
     },
     mutations: {
-      retry: 1,
+      retry: 0,
     },
   },
 });

@@ -56,13 +56,16 @@ export function handleMockRoute(config: InternalAxiosRequestConfig): AxiosRespon
       const booking = db.bookSlot(body);
       return createResponse(booking, 201);
     } catch (err: any) {
-      if (err?.message?.startsWith('SLOT_CONFLICT')) {
-        return createResponse({ message: err.message, code: 'SLOT_CONFLICT' }, 409);
-      }
-      if (err?.message?.startsWith('EXPIRED_SLOT')) {
-        return createResponse({ message: err.message, code: 'EXPIRED_SLOT' }, 400);
-      }
-      return createResponse({ message: 'Failed to book slot' }, 400);
+      const msg = err?.message || 'Failed to book slot';
+      const isConflict = msg.includes('SLOT_CONFLICT') || msg.includes('DOUBLE_BOOKING');
+      const isExpired = msg.includes('EXPIRED_SLOT');
+      return createResponse(
+        {
+          message: msg,
+          code: isConflict ? 'SLOT_CONFLICT' : isExpired ? 'EXPIRED_SLOT' : 'BOOKING_FAILED',
+        },
+        isConflict ? 409 : 400,
+      );
     }
   }
 

@@ -11,6 +11,7 @@ import { ProductDetailScreen } from '@/features/shop/screens/ProductDetailScreen
 import { WishlistScreen } from '@/features/shop/screens/WishlistScreen';
 
 import { NAVIGATION } from './constants';
+import { linkingConfig } from './linking';
 import { navigationRef } from './navigationRef';
 import { TabNavigator } from './TabNavigator';
 import type { RootStackParamList } from './types';
@@ -19,7 +20,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator(): React.JSX.Element {
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer linking={linkingConfig} ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen component={TabNavigator} name={NAVIGATION.MAIN_TABS} />
 
