@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { FlatList, RefreshControl, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -16,7 +16,7 @@ import { LoadingState } from '@/shared/components/LoadingState';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
 import { Typography } from '@/shared/components/Typography';
 import { ms } from '@/shared/utils/scale';
-import { showSuccessToast } from '@/shared/utils/toast';
+import { showErrorToast, showSuccessToast } from '@/shared/utils/toast';
 
 import { useCancelBooking, useMyBookings } from '../hooks/useDoctors';
 import type { Booking } from '../types';
@@ -24,70 +24,105 @@ import type { Booking } from '../types';
 export function UpcomingConsultationsScreen(): React.JSX.Element {
   const { theme, rt } = useUnistyles();
   const { t } = useLanguage();
-  const { data: bookings, isLoading, refetch, isRefetching } = useMyBookings();
-  const { mutateAsync: cancelBooking, isPending: isCancelling } = useCancelBooking();
+  const chipsListRef = useRef<FlatList>(null);
 
-  const [filterStatus, setFilterStatus] = useState<'all' | 'confirmed' | 'cancelled'>('all');
+  const { data: bookings, isLoading, isError, refetch, isRefetching } = useMyBookings();
+  const cancelMutation = useCancelBooking();
+
   const [selectedBookingForCancel, setSelectedBookingForCancel] = useState<Booking | null>(null);
+  const isCancelling = cancelMutation.isPending;
+  const [filterStatus, setFilterStatus] = useState<'all' | 'confirmed' | 'cancelled'>('all');
 
   const filteredBookings = useMemo(() => {
     if (!bookings) return [];
     if (filterStatus === 'all') return bookings;
-    return bookings.filter((b) => b.status === filterStatus);
+    return bookings.filter((b: Booking) => b.status === filterStatus);
   }, [bookings, filterStatus]);
 
   const handleConfirmCancel = async () => {
     if (!selectedBookingForCancel) return;
     try {
-      await cancelBooking(selectedBookingForCancel.id);
+      await cancelMutation.mutateAsync(selectedBookingForCancel.id);
       showSuccessToast(
-        t('consultation.cancelSuccess', 'Your consultation has been cancelled and slot released.'),
+        t('consultation.cancelledSuccess', 'Consultation slot has been cancelled.'),
         t('consultation.cancelled', 'Cancelled'),
       );
-    } catch {
-      // Handled by toast error
-    } finally {
       setSelectedBookingForCancel(null);
+    } catch {
+      showErrorToast(
+        t('consultation.cancelFailed', 'Could not cancel booking. Please try again.'),
+        t('common.error', 'Error'),
+      );
     }
   };
+
+  const handleSelectChip = (status: 'all' | 'confirmed' | 'cancelled', index: number) => {
+    setFilterStatus(status);
+    chipsListRef.current?.scrollToIndex({
+      index,
+      viewPosition: 0.5,
+      animated: true,
+    });
+  };
+
+  const chipItems = useMemo(
+    () => [
+      {
+        status: 'all' as const,
+        label: t('consultation.allBookings', 'All Bookings'),
+        icon: 'albums-outline' as const,
+      },
+      {
+        status: 'confirmed' as const,
+        label: t('consultation.upcomingConfirmed', 'Upcoming Confirmed'),
+        icon: 'checkmark-circle-outline' as const,
+      },
+      {
+        status: 'cancelled' as const,
+        label: t('consultation.cancelled', 'Cancelled'),
+        icon: 'close-circle-outline' as const,
+      },
+    ],
+    [t],
+  );
 
   const renderBooking = ({ item }: { item: Booking }) => {
     const isConfirmed = item.status === 'confirmed';
     return (
       <View style={styles.card}>
-        {/* Top Doctor Row */}
         <View style={styles.cardTopRow}>
           <View style={styles.docAvatarCircle}>
-            <Ionicons color={theme.colors.primary} name="person" size={ms(20)} />
+            <Ionicons color={theme.colors.primary} name="person" size={ms(22)} />
           </View>
-
           <View style={styles.docInfo}>
             <Typography style={styles.docName} variant="h3">
-              {item.doctorName}
+              Dr. {item.doctorName}
             </Typography>
             <Typography style={styles.specText} variant="caption">
               {item.specialization}
             </Typography>
           </View>
-
           <Badge
-            label={item.status.toUpperCase()}
-            variant={isConfirmed ? 'success' : item.status === 'cancelled' ? 'error' : 'neutral'}
+            label={
+              isConfirmed
+                ? t('consultation.confirmed', 'CONFIRMED')
+                : t('consultation.cancelled', 'CANCELLED')
+            }
+            variant={isConfirmed ? 'success' : 'error'}
           />
         </View>
 
         <View style={styles.divider} />
 
-        {/* Schedule & Timing Block */}
         <View style={styles.scheduleBlock}>
           <View style={styles.scheduleItem}>
-            <Ionicons color={theme.colors.primary} name="calendar" size={ms(15)} />
+            <Ionicons color={theme.colors.primary} name="calendar-outline" size={ms(15)} />
             <Typography style={styles.scheduleVal} variant="bodySmallSemiBold">
               {item.date}
             </Typography>
           </View>
           <View style={styles.scheduleItem}>
-            <Ionicons color={theme.colors.primary} name="time" size={ms(15)} />
+            <Ionicons color={theme.colors.primary} name="time-outline" size={ms(15)} />
             <Typography style={styles.scheduleVal} variant="bodySmallSemiBold">
               {item.time}
             </Typography>
@@ -99,30 +134,22 @@ export function UpcomingConsultationsScreen(): React.JSX.Element {
           </View>
         </View>
 
-        {/* Patient Details */}
         <View style={styles.patientRow}>
           <Typography style={styles.patientLabel} variant="caption">
-            {t('consultation.patient', 'Patient')}:
+            {t('consultation.patientDetails', 'Patient')}:
           </Typography>
-          <Typography style={styles.patientValue} variant="bodySmall">
-            {item.patientName} ({item.patientAge}y) • {item.patientPhone}
+          <Typography style={styles.patientValue} variant="bodySmallSemiBold">
+            {item.patientName} ({item.patientAge} yrs)
           </Typography>
         </View>
 
-        {item.symptoms ? (
-          <View style={styles.symptomsBox}>
-            <Ionicons
-              color={theme.colors.textSecondary}
-              name="chatbubble-ellipses-outline"
-              size={ms(13)}
-            />
-            <Typography numberOfLines={2} style={styles.symptomsText} variant="caption">
-              {item.symptoms}
-            </Typography>
-          </View>
-        ) : null}
+        <View style={styles.symptomsBox}>
+          <Ionicons color={theme.colors.textSecondary} name="medkit-outline" size={ms(14)} />
+          <Typography numberOfLines={1} style={styles.symptomsText} variant="caption">
+            {item.symptoms}
+          </Typography>
+        </View>
 
-        {/* Action Buttons */}
         <View style={styles.actionRow}>
           <Button
             leftIcon={
@@ -132,9 +159,8 @@ export function UpcomingConsultationsScreen(): React.JSX.Element {
             size="sm"
             style={styles.actionBtn}
             title={t('consultation.viewReceipt', 'View Receipt')}
-            variant="outline"
+            variant="secondary"
           />
-
           {isConfirmed && (
             <Button
               leftIcon={
@@ -152,6 +178,70 @@ export function UpcomingConsultationsScreen(): React.JSX.Element {
     );
   };
 
+  const renderEmptyState = () => {
+    if (isError) {
+      return (
+        <EmptyState
+          actionTitle={t('common.retry', 'Retry')}
+          description={t(
+            'common.errorSub',
+            'An error occurred while communicating with the server. Please check your connection and retry.',
+          )}
+          iconName="alert-circle-outline"
+          onAction={() => refetch()}
+          title={t('common.errorTitle', 'Unable to Load Appointments')}
+        />
+      );
+    }
+
+    if (filterStatus === 'cancelled') {
+      return (
+        <EmptyState
+          actionTitle={t('consultation.viewAllBookings', 'View All Bookings')}
+          description={t(
+            'consultation.noCancelledSub',
+            "You don't have any cancelled appointments.",
+          )}
+          iconName="calendar-outline"
+          onAction={() => setFilterStatus('all')}
+          title={t('consultation.noCancelledFound', 'No Cancelled Consultations')}
+        />
+      );
+    }
+
+    if (filterStatus === 'confirmed') {
+      return (
+        <EmptyState
+          actionTitle={t('consultation.findDoctor', 'Book a Consultation')}
+          description={t(
+            'consultation.noConfirmedSub',
+            "You don't have any upcoming confirmed appointments.",
+          )}
+          iconName="calendar-outline"
+          onAction={() => navigate(NAVIGATION.DOCTOR_LIST)}
+          title={t('consultation.noConfirmedFound', 'No Upcoming Consultations')}
+        />
+      );
+    }
+
+    return (
+      <EmptyState
+        actionTitle={t('consultation.findDoctor', 'Book a Consultation')}
+        description={t(
+          'consultation.noConsultationsSub',
+          'Book an appointment with top Ayurvedic specialists.',
+        )}
+        iconName="calendar-outline"
+        onAction={() => navigate(NAVIGATION.DOCTOR_LIST)}
+        title={t('consultation.noConsultations', 'No Consultations Found')}
+      />
+    );
+  };
+
+  const activeCount = bookings
+    ? bookings.filter((b: Booking) => b.status === 'confirmed').length
+    : 0;
+
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset>
       {/* Top Header Bar */}
@@ -161,9 +251,9 @@ export function UpcomingConsultationsScreen(): React.JSX.Element {
             {t('consultation.myConsultations', 'My Consultations')}
           </Typography>
           <Typography style={styles.headerSub} variant="caption">
-            {bookings
-              ? `${bookings.filter((b) => b.status === 'confirmed').length} Active Appointments`
-              : 'Ayurvedic Care Appointments'}
+            {t('consultation.activeAppointments', '{{count}} Active Appointments', {
+              count: activeCount,
+            })}
           </Typography>
         </View>
 
@@ -179,60 +269,42 @@ export function UpcomingConsultationsScreen(): React.JSX.Element {
         </View>
       </View>
 
-      {/* Filter Tabs (All / Confirmed / Cancelled) */}
+      {/* Auto-Centering Filter Chips */}
       <View style={styles.filterSection}>
-        <ScrollView
+        <FlatList
           contentContainerStyle={styles.filterScroll}
+          data={chipItems}
           horizontal
+          keyExtractor={(item) => item.status}
+          onScrollToIndexFailed={(info) => {
+            setTimeout(() => {
+              chipsListRef.current?.scrollToIndex({
+                index: info.index,
+                viewPosition: 0.5,
+                animated: true,
+              });
+            }, 100);
+          }}
+          ref={chipsListRef}
+          renderItem={({ item, index }) => {
+            const isSelected = filterStatus === item.status;
+            return (
+              <Chip
+                icon={
+                  <Ionicons
+                    color={isSelected ? theme.colors.textInverse : theme.colors.textSecondary}
+                    name={item.icon}
+                    size={ms(14)}
+                  />
+                }
+                label={item.label}
+                onPress={() => handleSelectChip(item.status, index)}
+                selected={isSelected}
+              />
+            );
+          }}
           showsHorizontalScrollIndicator={false}
-        >
-          <Chip
-            icon={
-              <Ionicons
-                color={
-                  filterStatus === 'all' ? theme.colors.textInverse : theme.colors.textSecondary
-                }
-                name="albums-outline"
-                size={ms(14)}
-              />
-            }
-            label="All Bookings"
-            onPress={() => setFilterStatus('all')}
-            selected={filterStatus === 'all'}
-          />
-          <Chip
-            icon={
-              <Ionicons
-                color={
-                  filterStatus === 'confirmed'
-                    ? theme.colors.textInverse
-                    : theme.colors.textSecondary
-                }
-                name="checkmark-circle-outline"
-                size={ms(14)}
-              />
-            }
-            label="Upcoming Confirmed"
-            onPress={() => setFilterStatus('confirmed')}
-            selected={filterStatus === 'confirmed'}
-          />
-          <Chip
-            icon={
-              <Ionicons
-                color={
-                  filterStatus === 'cancelled'
-                    ? theme.colors.textInverse
-                    : theme.colors.textSecondary
-                }
-                name="close-circle-outline"
-                size={ms(14)}
-              />
-            }
-            label="Cancelled"
-            onPress={() => setFilterStatus('cancelled')}
-            selected={filterStatus === 'cancelled'}
-          />
-        </ScrollView>
+        />
       </View>
 
       {/* Consultation Bookings List */}
@@ -246,18 +318,7 @@ export function UpcomingConsultationsScreen(): React.JSX.Element {
           ]}
           data={filteredBookings}
           keyExtractor={(item) => item.id}
-          ListEmptyComponent={
-            <EmptyState
-              actionTitle={t('consultation.findDoctor', 'Book a Consultation')}
-              description={t(
-                'consultation.noConsultationsSub',
-                'Book an appointment with top Ayurvedic specialists.',
-              )}
-              iconName="calendar-outline"
-              onAction={() => navigate(NAVIGATION.DOCTOR_LIST)}
-              title={t('consultation.noConsultations', 'No Consultations Found')}
-            />
-          }
+          ListEmptyComponent={renderEmptyState}
           refreshControl={
             <RefreshControl
               colors={[theme.colors.primary]}

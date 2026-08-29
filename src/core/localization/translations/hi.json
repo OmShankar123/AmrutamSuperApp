@@ -87,7 +87,16 @@
     "maximumFee": "अधिकतम शुल्क",
     "minimumRating": "न्यूनतम रेटिंग",
     "loadingSlots": "स्लॉट लोड हो रहे हैं...",
-    "fillDetails": "कृपया रोगी का विवरण भरें"
+    "fillDetails": "कृपया रोगी का विवरण भरें",
+    "allBookings": "सभी बुकिंग",
+    "upcomingConfirmed": "आगामी पुष्ट",
+    "cancelled": "रद्द",
+    "noCancelledFound": "कोई रद्द परामर्श नहीं",
+    "noCancelledSub": "आपका कोई रद्द किया गया अपॉइंटमेंट नहीं है।",
+    "viewAllBookings": "सभी बुकिंग देखें",
+    "noConfirmedFound": "कोई आगामी परामर्श नहीं",
+    "noConfirmedSub": "आपका कोई आगामी पुष्ट अपॉइंटमेंट नहीं है।",
+    "activeAppointments": "{{count}} सक्रिय अपॉइंटमेंट"
   },
   "shop": {
     "title": "आयुर्वेदिक स्टोर",

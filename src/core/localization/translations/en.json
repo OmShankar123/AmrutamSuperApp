@@ -87,7 +87,16 @@
     "maximumFee": "Maximum Fee",
     "minimumRating": "Minimum Rating",
     "loadingSlots": "Loading slots...",
-    "fillDetails": "Please fill in patient details"
+    "fillDetails": "Please fill in patient details",
+    "allBookings": "All Bookings",
+    "upcomingConfirmed": "Upcoming Confirmed",
+    "cancelled": "Cancelled",
+    "noCancelledFound": "No Cancelled Consultations",
+    "noCancelledSub": "You don't have any cancelled appointments.",
+    "viewAllBookings": "View All Bookings",
+    "noConfirmedFound": "No Upcoming Consultations",
+    "noConfirmedSub": "You don't have any upcoming confirmed appointments.",
+    "activeAppointments": "{{count}} Active Appointments"
   },
   "shop": {
     "title": "Ayurvedic Store",

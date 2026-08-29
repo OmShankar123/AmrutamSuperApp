@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { FlatList, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 import type { RouteProp } from '@react-navigation/native';
@@ -28,6 +28,7 @@ export function SlotBookingScreen(): React.JSX.Element {
   const route = useRoute<SlotBookingRouteProp>();
   const { doctorId } = route.params;
   const { t } = useLanguage();
+  const dateListRef = useRef<FlatList>(null);
 
   const { data: doctor } = useDoctorDetail(doctorId);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -57,6 +58,16 @@ export function SlotBookingScreen(): React.JSX.Element {
     }
     return dates;
   }, [t]);
+
+  const handleSelectDate = (iso: string, index: number) => {
+    setSelectedDate(iso);
+    setSelectedSlot(null);
+    dateListRef.current?.scrollToIndex({
+      index,
+      viewPosition: 0.5,
+      animated: true,
+    });
+  };
 
   const handleConfirmBooking = async () => {
     if (!doctor || !selectedSlot) {
@@ -113,11 +124,15 @@ export function SlotBookingScreen(): React.JSX.Element {
     }
   };
 
+  const docDisplayName = doctor
+    ? `${doctor.name.startsWith('Dr.') ? doctor.name : `Dr. ${doctor.name}`} • ₹${doctor.consultationFee}`
+    : undefined;
+
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
       <Header
         showClose
-        subtitle={doctor ? `Dr. ${doctor.name} • ₹${doctor.consultationFee}` : undefined}
+        subtitle={docDisplayName}
         title={t('consultation.bookAppointment', 'Book Appointment')}
       />
 
@@ -126,26 +141,33 @@ export function SlotBookingScreen(): React.JSX.Element {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Date Selector Row */}
+        {/* Date Selector Row with Auto-Centering FlatList */}
         <Typography style={styles.sectionTitle} variant="h3">
           {t('consultation.selectDate', 'Select Date')}
         </Typography>
-        <ScrollView
+
+        <FlatList
           contentContainerStyle={styles.dateScroll}
+          data={availableDates}
           horizontal
-          showsHorizontalScrollIndicator={false}
-        >
-          {availableDates.map((item) => {
+          keyExtractor={(item) => item.iso}
+          onScrollToIndexFailed={(info) => {
+            setTimeout(() => {
+              dateListRef.current?.scrollToIndex({
+                index: info.index,
+                viewPosition: 0.5,
+                animated: true,
+              });
+            }, 100);
+          }}
+          ref={dateListRef}
+          renderItem={({ item, index }) => {
             const isSelected = selectedDate === item.iso;
             return (
               <TouchableOpacity
                 accessibilityLabel={`${item.dayName} ${item.monthName} ${item.dayNum}`}
                 accessibilityRole="button"
-                key={item.iso}
-                onPress={() => {
-                  setSelectedDate(item.iso);
-                  setSelectedSlot(null);
-                }}
+                onPress={() => handleSelectDate(item.iso, index)}
                 style={[styles.dateCard, isSelected && styles.dateCardSelected]}
               >
                 <Text style={[styles.dayName, isSelected && styles.dayNameSelected]}>
@@ -159,8 +181,10 @@ export function SlotBookingScreen(): React.JSX.Element {
                 </Text>
               </TouchableOpacity>
             );
-          })}
-        </ScrollView>
+          }}
+          showsHorizontalScrollIndicator={false}
+          style={styles.dateListContainer}
+        />
 
         {/* Extracted Slot Selection Component */}
         <Typography style={styles.sectionTitle} variant="h3">
@@ -251,9 +275,12 @@ const styles = StyleSheet.create((theme, rt) => ({
     marginBottom: ms(10),
     marginTop: ms(8),
   },
+  dateListContainer: {
+    marginBottom: ms(8),
+  },
   dateScroll: {
     gap: ms(10),
-    paddingBottom: ms(8),
+    paddingRight: ms(16),
   },
   dateCard: {
     width: ms(65),
