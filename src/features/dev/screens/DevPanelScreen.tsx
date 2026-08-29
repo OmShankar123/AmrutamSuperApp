@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { ScrollView, Switch, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
-import { useQueryClient } from '@tanstack/react-query';
 
+import type { ChaosConfig } from '@/core/api/interceptors/chaos';
 import { getChaosConfig, setChaosConfig } from '@/core/api/interceptors/chaos';
 import { useNetworkStore } from '@/core/api/services/syncManager';
+import { useLanguage } from '@/core/localization/useLanguage';
+import { queryClient } from '@/core/providers/QueryProvider';
 import { appStorage } from '@/core/storage';
 import { Button } from '@/shared/components/Button';
 import { Header } from '@/shared/components/Header';
@@ -17,58 +19,65 @@ import { showSuccessToast } from '@/shared/utils/toast';
 const LATENCY_PRESETS = [
   { label: '0ms (Fast)', val: 0 },
   { label: '350ms (Normal)', val: 350 },
-  { label: '1000ms (Slow 3G)', val: 1000 },
-  { label: '2500ms (High)', val: 2500 },
+  { label: '1000ms (3G Slow)', val: 1000 },
+  { label: '2500ms (2G Flaky)', val: 2500 },
 ];
 
 const ERROR_RATE_PRESETS = [
-  { label: '0% (Healthy)', val: 0 },
-  { label: '15% (Flaky)', val: 0.15 },
-  { label: '30% (Severe)', val: 0.3 },
-  { label: '50% (Chaos)', val: 0.5 },
+  { label: '0% (Stable)', val: 0 },
+  { label: '10% (Occasional)', val: 0.1 },
+  { label: '25% (Unstable)', val: 0.25 },
+  { label: '50% (High Failure)', val: 0.5 },
 ];
 
 export function DevPanelScreen(): React.JSX.Element {
   const { theme } = useUnistyles();
-  const queryClient = useQueryClient();
+  const { t } = useLanguage();
+  const [chaos, setChaosState] = useState<ChaosConfig>(() => getChaosConfig());
   const isConnected = useNetworkStore((s) => s.isConnected);
   const setNetworkState = useNetworkStore((s) => s.setNetworkState);
 
-  const [chaos, setChaos] = useState(getChaosConfig());
-
-  const updateChaos = (patch: Partial<typeof chaos>) => {
-    const updated = { ...chaos, ...patch };
-    setChaos(updated);
-    setChaosConfig(updated);
+  const updateChaos = (partial: Partial<ChaosConfig>) => {
+    setChaosConfig(partial);
+    setChaosState((prev) => ({ ...prev, ...partial }));
   };
 
   const toggleForceOffline = (val: boolean) => {
     updateChaos({ offline: val });
     setNetworkState(!val, !val);
     showSuccessToast(
-      val ? 'Simulated offline mode enabled' : 'Simulated online mode restored',
-      'Network State Changed',
+      val
+        ? t('dev.offlineEnabled', 'Simulated offline mode enabled')
+        : t('dev.onlineRestored', 'Simulated online mode restored'),
+      t('dev.networkStateChanged', 'Network State Changed'),
     );
   };
 
   const handleResetCache = () => {
     queryClient.clear();
     appStorage.clearAll();
-    showSuccessToast('Query cache & local MMKV storage wiped', 'Reset Complete');
+    showSuccessToast(
+      t('dev.resetSuccess', 'Query cache & local MMKV storage wiped'),
+      t('dev.resetComplete', 'Reset Complete'),
+    );
   };
 
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
-      <Header showBack subtitle="API Simulation & Diagnostics" title="Chaos & Dev Panel" />
+      <Header
+        showBack
+        subtitle={t('dev.subtitle', 'API Simulation & Diagnostics')}
+        title={t('dev.title', 'Chaos & Dev Panel')}
+      />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Chaos Mode Master Switch */}
         <View style={styles.card}>
           <View style={styles.rowBetween}>
             <View style={styles.labelGroup}>
-              <Typography variant="h3">Chaos Mode</Typography>
+              <Typography variant="h3">{t('dev.chaosMode', 'Chaos Mode')}</Typography>
               <Typography style={styles.subtext} variant="caption">
-                Enable simulated network latency & error injection
+                {t('dev.chaosModeSub', 'Enable simulated network latency & error injection')}
               </Typography>
             </View>
             <Switch
@@ -84,10 +93,12 @@ export function DevPanelScreen(): React.JSX.Element {
         <View style={styles.card}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons color={theme.colors.primary} name="timer-outline" size={ms(18)} />
-            <Typography variant="h3">Simulated API Latency</Typography>
+            <Typography variant="h3">
+              {t('dev.simulatedLatency', 'Simulated API Latency')}
+            </Typography>
           </View>
           <Typography style={styles.sectionDesc} variant="caption">
-            Current delay: {chaos.delayMs}ms
+            {t('dev.currentDelay', 'Current delay: {{ms}}ms', { ms: chaos.delayMs })}
           </Typography>
 
           <View style={styles.presetGrid}>
@@ -115,10 +126,14 @@ export function DevPanelScreen(): React.JSX.Element {
         <View style={styles.card}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons color={theme.colors.error} name="warning-outline" size={ms(18)} />
-            <Typography variant="h3">HTTP 500 Error Injection</Typography>
+            <Typography variant="h3">
+              {t('dev.errorInjection', 'HTTP 500 Error Injection')}
+            </Typography>
           </View>
           <Typography style={styles.sectionDesc} variant="caption">
-            Probability of simulated network failure: {Math.round(chaos.errorRate * 100)}%
+            {t('dev.errorProbability', 'Probability of simulated network failure: {{rate}}%', {
+              rate: Math.round(chaos.errorRate * 100),
+            })}
           </Typography>
 
           <View style={styles.presetGrid}>
@@ -146,9 +161,12 @@ export function DevPanelScreen(): React.JSX.Element {
         <View style={styles.card}>
           <View style={styles.rowBetween}>
             <View style={styles.labelGroup}>
-              <Typography variant="h3">Force Offline Mode</Typography>
+              <Typography variant="h3">{t('dev.forceOffline', 'Force Offline Mode')}</Typography>
               <Typography style={styles.subtext} variant="caption">
-                Disconnect app from network to test offline sync banner & cached queries
+                {t(
+                  'dev.forceOfflineSub',
+                  'Disconnect app from network to test offline sync banner & cached queries',
+                )}
               </Typography>
             </View>
             <Switch
@@ -164,33 +182,35 @@ export function DevPanelScreen(): React.JSX.Element {
         <View style={styles.card}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons color={theme.colors.info} name="analytics-outline" size={ms(18)} />
-            <Typography variant="h3">System Diagnostics</Typography>
+            <Typography variant="h3">{t('dev.systemDiagnostics', 'System Diagnostics')}</Typography>
           </View>
 
           <View style={styles.diagRow}>
             <Typography style={styles.diagLabel} variant="bodySmall">
-              Network Status
+              {t('dev.networkStatus', 'Network Status')}
             </Typography>
             <Typography
               style={isConnected ? styles.connectedText : styles.disconnectedText}
               variant="bodySmallSemiBold"
             >
-              {isConnected ? 'ONLINE' : 'OFFLINE (Simulated)'}
+              {isConnected
+                ? t('dev.online', 'ONLINE')
+                : t('dev.offlineSimulated', 'OFFLINE (Simulated)')}
             </Typography>
           </View>
 
           <View style={styles.diagRow}>
             <Typography style={styles.diagLabel} variant="bodySmall">
-              MMKV Storage Engine
+              {t('dev.mmkvEngine', 'MMKV Storage Engine')}
             </Typography>
-            <Typography variant="bodySmallSemiBold">Active</Typography>
+            <Typography variant="bodySmallSemiBold">{t('dev.active', 'Active')}</Typography>
           </View>
 
           <View style={styles.diagRow}>
             <Typography style={styles.diagLabel} variant="bodySmall">
-              TanStack Query Cache
+              {t('dev.queryCache', 'TanStack Query Cache')}
             </Typography>
-            <Typography variant="bodySmallSemiBold">Hydrated</Typography>
+            <Typography variant="bodySmallSemiBold">{t('dev.hydrated', 'Hydrated')}</Typography>
           </View>
         </View>
 
@@ -201,7 +221,7 @@ export function DevPanelScreen(): React.JSX.Element {
           }
           onPress={handleResetCache}
           style={styles.resetBtn}
-          title="Wipe Query Cache & Reset Stores"
+          title={t('dev.wipeCache', 'Wipe Query Cache & Reset Stores')}
           variant="danger"
         />
       </ScrollView>

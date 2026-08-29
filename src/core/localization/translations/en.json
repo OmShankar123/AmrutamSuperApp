@@ -169,5 +169,31 @@
     "banner": "You are offline — showing cached data",
     "syncing": "Syncing queued changes...",
     "syncComplete": "All offline changes synced!"
+  },
+  "dev": {
+    "title": "Chaos & Dev Panel",
+    "subtitle": "API Simulation & Diagnostics",
+    "chaosMode": "Chaos Mode",
+    "chaosModeSub": "Enable simulated network latency & error injection",
+    "simulatedLatency": "Simulated API Latency",
+    "currentDelay": "Current delay: {{ms}}ms",
+    "errorInjection": "HTTP 500 Error Injection",
+    "errorProbability": "Probability of simulated network failure: {{rate}}%",
+    "forceOffline": "Force Offline Mode",
+    "forceOfflineSub": "Disconnect app from network to test offline sync banner & cached queries",
+    "systemDiagnostics": "System Diagnostics",
+    "networkStatus": "Network Status",
+    "online": "ONLINE",
+    "offlineSimulated": "OFFLINE (Simulated)",
+    "mmkvEngine": "MMKV Storage Engine",
+    "active": "Active",
+    "queryCache": "TanStack Query Cache",
+    "hydrated": "Hydrated",
+    "wipeCache": "Wipe Query Cache & Reset Stores",
+    "resetSuccess": "Query cache & local MMKV storage wiped",
+    "resetComplete": "Reset Complete",
+    "offlineEnabled": "Simulated offline mode enabled",
+    "onlineRestored": "Simulated online mode restored",
+    "networkStateChanged": "Network State Changed"
   }
 }
