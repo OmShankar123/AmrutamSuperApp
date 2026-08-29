@@ -1,5 +1,6 @@
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
+import { API_ENDPOINTS } from '../endpoints';
 import { db } from '../generators';
 
 export function handleMockRoute(config: InternalAxiosRequestConfig): AxiosResponse | null {
@@ -17,7 +18,7 @@ export function handleMockRoute(config: InternalAxiosRequestConfig): AxiosRespon
   });
 
   // DOCTORS ROUTES
-  if (url === '/doctors' && method === 'get') {
+  if (url === API_ENDPOINTS.DOCTORS && method === 'get') {
     const res = db.queryDoctors({
       query: params.query,
       specialization: params.specialization,
@@ -49,7 +50,7 @@ export function handleMockRoute(config: InternalAxiosRequestConfig): AxiosRespon
   }
 
   // CONSULTATIONS & BOOKING ROUTES
-  if (url === '/consultations/book' && method === 'post') {
+  if (url === API_ENDPOINTS.BOOK_CONSULTATION && method === 'post') {
     try {
       const body = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
       const booking = db.bookSlot(body);
@@ -57,6 +58,9 @@ export function handleMockRoute(config: InternalAxiosRequestConfig): AxiosRespon
     } catch (err: any) {
       if (err?.message?.startsWith('SLOT_CONFLICT')) {
         return createResponse({ message: err.message, code: 'SLOT_CONFLICT' }, 409);
+      }
+      if (err?.message?.startsWith('EXPIRED_SLOT')) {
+        return createResponse({ message: err.message, code: 'EXPIRED_SLOT' }, 400);
       }
       return createResponse({ message: 'Failed to book slot' }, 400);
     }
@@ -70,13 +74,13 @@ export function handleMockRoute(config: InternalAxiosRequestConfig): AxiosRespon
     return createResponse({ success: true, message: 'Booking cancelled successfully' });
   }
 
-  if (url === '/consultations/my-bookings' && method === 'get') {
+  if (url === API_ENDPOINTS.MY_BOOKINGS && method === 'get') {
     const bookings = db.getUserBookings();
     return createResponse(bookings);
   }
 
   // PRODUCTS ROUTES
-  if ((url === '/products' || url === '/shop/products') && method === 'get') {
+  if (url === API_ENDPOINTS.PRODUCTS && method === 'get') {
     const res = db.queryProducts({
       query: params.query,
       category: params.category,
@@ -101,7 +105,7 @@ export function handleMockRoute(config: InternalAxiosRequestConfig): AxiosRespon
   }
 
   // HEALTH RECORDS ROUTES
-  if (url === '/health-records' && method === 'get') {
+  if (url === API_ENDPOINTS.HEALTH_RECORDS && method === 'get') {
     const res = db.queryHealthRecords({
       query: params.query,
       type: params.type,
