@@ -27,6 +27,10 @@ export const ProductCard = memo(function ProductCard({
   const { theme } = useUnistyles();
   const { t } = useLanguage();
   const addToCart = useCartStore((s) => s.addToCart);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const cartItem = useCartStore((s) => s.items.find((i) => i.product.id === product.id));
+  const cartQuantity = cartItem?.quantity ?? 0;
+
   const toggleWishlist = useWishlistStore((s) => s.toggleWishlist);
   const isWishlisted = useWishlistStore((s) => s.items.some((i) => i.id === product.id));
 
@@ -89,7 +93,7 @@ export const ProductCard = memo(function ProductCard({
           {product.name}
         </Typography>
 
-        {/* Price Row & Add Button */}
+        {/* Price Row & Add / Stepper Button */}
         <View style={styles.footer}>
           <View>
             <Typography variant="price">₹{product.price}</Typography>
@@ -100,18 +104,40 @@ export const ProductCard = memo(function ProductCard({
             )}
           </View>
 
-          <TouchableOpacity
-            accessibilityLabel="Add to Cart"
-            disabled={!product.inStock}
-            onPress={() => addToCart(product, 1)}
-            style={[styles.addBtn, !product.inStock && styles.outOfStockBtn]}
-          >
-            {product.inStock ? (
+          {!product.inStock ? (
+            <Badge label={t('shop.outOfStock', 'Sold Out')} variant="error" />
+          ) : cartQuantity > 0 ? (
+            <View style={styles.qtyStepper}>
+              <TouchableOpacity
+                accessibilityLabel="Decrease quantity"
+                onPress={() => updateQuantity(product.id, cartQuantity - 1)}
+                style={styles.stepperBtn}
+              >
+                <Ionicons color={theme.colors.textInverse} name="remove" size={ms(13)} />
+              </TouchableOpacity>
+              <View style={styles.qtyCountWrap}>
+                <Ionicons color={theme.colors.textInverse} name="bag-handle" size={ms(11)} />
+                <Typography style={styles.qtyCountText} variant="caption">
+                  {cartQuantity}
+                </Typography>
+              </View>
+              <TouchableOpacity
+                accessibilityLabel="Increase quantity"
+                onPress={() => addToCart(product, 1)}
+                style={styles.stepperBtn}
+              >
+                <Ionicons color={theme.colors.textInverse} name="add" size={ms(13)} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              accessibilityLabel="Add to Cart"
+              onPress={() => addToCart(product, 1)}
+              style={styles.addBtn}
+            >
               <Ionicons color={theme.colors.textInverse} name="add" size={ms(18)} />
-            ) : (
-              <Badge label={t('shop.outOfStock', 'Sold Out')} variant="error" />
-            )}
-          </TouchableOpacity>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </Pressable>
@@ -216,8 +242,30 @@ const styles = StyleSheet.create((theme) => ({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  outOfStockBtn: {
-    backgroundColor: 'transparent',
-    width: 'auto',
+  qtyStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: ms(20),
+    paddingHorizontal: ms(4),
+    paddingVertical: ms(3),
+    gap: ms(2),
+    boxShadow: theme.shadows.sm,
+  },
+  stepperBtn: {
+    padding: ms(3),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyCountWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ms(3),
+    paddingHorizontal: ms(4),
+  },
+  qtyCountText: {
+    color: theme.colors.textInverse,
+    fontFamily: theme.fonts.bold,
+    fontSize: ms(11),
   },
 }));
