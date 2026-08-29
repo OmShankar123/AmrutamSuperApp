@@ -1,8 +1,73 @@
 import type { Doctor, Slot, Specialization } from '@/features/consultation/types';
 
-import { SeededRandom } from './seed';
+class SeededRandom {
+  private seed: number;
+  constructor(seed: number) {
+    this.seed = seed;
+  }
+  next(): number {
+    this.seed = (this.seed * 9301 + 49297) % 233280;
+    return this.seed / 233280;
+  }
+}
 
-const SPECIALIZATIONS: readonly Specialization[] = [
+const FIRST_NAMES = [
+  'Aarav',
+  'Vihaan',
+  'Aditya',
+  'Sai',
+  'Reyansh',
+  'Arjun',
+  'Vivaan',
+  'Ayaan',
+  'Krishna',
+  'Ishaan',
+  'Ananya',
+  'Diya',
+  'Saanvi',
+  'Aadhya',
+  'Kiara',
+  'Myra',
+  'Ira',
+  'Pari',
+  'Prisha',
+  'Riya',
+  'Devendra',
+  'Gayatri',
+  'Vaidya',
+  'Harish',
+  'Madhav',
+  'Pooja',
+  'Shrikant',
+  'Meera',
+  'Ramesh',
+  'Sunita',
+];
+
+const LAST_NAMES = [
+  'Sharma',
+  'Verma',
+  'Gupta',
+  'Patel',
+  'Joshi',
+  'Bhatt',
+  'Nair',
+  'Iyer',
+  'Menon',
+  'Kulkarni',
+  'Deshmukh',
+  'Pillai',
+  'Rao',
+  'Reddy',
+  'Mishra',
+  'Pandey',
+  'Tripathi',
+  'Acharya',
+  'Upadhyay',
+  'Tiwari',
+];
+
+const SPECIALIZATIONS: Specialization[] = [
   'Panchakarma',
   'Kayachikitsa',
   'Nadi Pariksha',
@@ -14,131 +79,101 @@ const SPECIALIZATIONS: readonly Specialization[] = [
 ];
 
 const CITIES = [
-  'Varanasi',
-  'Haridwar',
-  'Rishikesh',
-  'Kerala (Kottakkal)',
-  'Udupi',
-  'Pune',
-  'Jaipur',
-  'Bangalore',
-  'Delhi NCR',
   'Mumbai',
-  'Mysore',
+  'Delhi',
+  'Bengaluru',
+  'Hyderabad',
+  'Chennai',
+  'Kolkata',
+  'Pune',
   'Ahmedabad',
-];
-
-const FIRST_NAMES = [
-  'Dr. Rajesh',
-  'Dr. Priya',
-  'Dr. Ananya',
-  'Dr. Vikram',
-  'Dr. Sunita',
-  'Dr. Amit',
-  'Dr. Deepa',
-  'Dr. Suresh',
-  'Dr. Meenakshi',
-  'Dr. Arvind',
-  'Dr. Kavita',
-  'Dr. Manoj',
-  'Dr. Shalini',
-  'Dr. Harish',
-  'Dr. Vandana',
-  'Dr. Ramesh',
-  'Dr. Neha',
-  'Dr. Ashok',
-  'Dr. Geeta',
-  'Dr. Sanjay',
-];
-
-const LAST_NAMES = [
-  'Sharma',
-  'Nair',
-  'Iyer',
-  'Verma',
-  'Patel',
-  'Joshi',
-  'Shukla',
-  'Menon',
-  'Bhattacharya',
-  'Tripathi',
-  'Gupta',
-  'Pillai',
-  'Kulkarni',
-  'Pandey',
-  'Acharya',
-  'Deshmukh',
+  'Jaipur',
+  'Varanasi',
+  'Rishikesh',
+  'Haridwar',
+  'Kochi',
+  'Thiruvananthapuram',
+  'Udupi',
 ];
 
 const CLINIC_NAMES = [
-  'Amrutam Ayur Clinic',
-  'Sanatan Veda Hospital',
-  'Panchakarma Wellness Hub',
-  'Nadi Healing Centre',
-  'Sanjeevani Ayurvedic Kendra',
-  'Charak Care Clinic',
-  'Dhanwantari Healing Lounge',
-  'Ayurshree Wellness Centre',
+  'Amrutam Wellness Clinic',
+  'AyurVeda Healing Sansthan',
+  'Charaka Healthcare',
+  'Patanjali Chikitsalaya',
+  'Sushruta Holistic Center',
+  'Vaidya Ratnam Clinic',
+  'Dhanwantari Healing Sanctuary',
+  'Ojas Ayurvedic Center',
+  'Prana Wellness Clinic',
 ];
 
-const ALL_LANGUAGES = ['Hindi', 'English', 'Sanskrit', 'Marathi', 'Malayalam', 'Gujarati', 'Tamil'];
-
-const ALL_QUALIFICATIONS = [
-  'BAMS',
-  'MD (Ayurveda)',
-  'PhD (Panchakarma)',
-  'Gold Medalist BAMS',
-  'MS (Shalya Tantra)',
-  'Fellow in Pulse Diagnosis',
-];
-
-const VERIFIED_DOCTOR_IMAGES = [
-  'https://images.unsplash.com/photo-1622253692010-333f2da6031d',
-  'https://images.unsplash.com/photo-1537368910025-700350fe46c7',
-  'https://images.unsplash.com/photo-1559839734-2b71ea197ec2',
-  'https://images.unsplash.com/photo-1582750433449-648ed127bb54',
-  'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d',
-  'https://images.unsplash.com/photo-1579684385127-1ef15d508118',
-  'https://images.unsplash.com/photo-1622902046580-2b47f47f5471',
+const DOCTOR_AVATARS = [
+  'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400',
+  'https://images.unsplash.com/photo-1594824813501-48af59f0f9b6?w=400',
+  'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400',
+  'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400',
+  'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400',
+  'https://images.unsplash.com/photo-1622902046580-2b47f47f5471?w=400',
 ];
 
 export function generateDoctors(count = 5000): Doctor[] {
-  const rng = new SeededRandom(42);
-  const doctors: Doctor[] = new Array(count);
+  const doctors: Doctor[] = [];
+  for (let i = 1; i <= count; i++) {
+    const rng = new SeededRandom(i * 7919);
+    const firstName = FIRST_NAMES[Math.floor(rng.next() * FIRST_NAMES.length)];
+    const lastName = LAST_NAMES[Math.floor(rng.next() * LAST_NAMES.length)];
+    const name = `Dr. ${firstName} ${lastName}`;
+    const specialization = SPECIALIZATIONS[Math.floor(rng.next() * SPECIALIZATIONS.length)];
+    const city = CITIES[Math.floor(rng.next() * CITIES.length)];
+    const clinicName = CLINIC_NAMES[Math.floor(rng.next() * CLINIC_NAMES.length)];
+    const experienceYears = Math.floor(rng.next() * 30) + 3;
+    const rating = Number((3.8 + rng.next() * 1.2).toFixed(1));
+    const reviewCount = Math.floor(rng.next() * 450) + 20;
+    const consultationFee = Math.floor(rng.next() * 15 + 4) * 100;
+    const isAvailableToday = rng.next() > 0.35;
+    const avatarUrl = DOCTOR_AVATARS[i % DOCTOR_AVATARS.length];
 
-  for (let i = 0; i < count; i++) {
-    const firstName = rng.pick(FIRST_NAMES);
-    const lastName = rng.pick(LAST_NAMES);
-    const specialization = rng.pick(SPECIALIZATIONS);
-    const city = rng.pick(CITIES);
-    const clinic = rng.pick(CLINIC_NAMES);
-    const experience = rng.nextInt(3, 35);
-    const fee = rng.nextInt(4, 25) * 100;
-    const rating = Number((4.2 + rng.next() * 0.79).toFixed(1));
-    const reviewCount = rng.nextInt(12, 1850);
-    const baseAvatar = VERIFIED_DOCTOR_IMAGES[i % VERIFIED_DOCTOR_IMAGES.length];
-
-    doctors[i] = {
-      id: `doc_${i + 1}`,
-      name: `${firstName} ${lastName}`,
-      title: `Senior Ayurvedic Consultant (${specialization})`,
+    doctors.push({
+      id: `doc_${i}`,
+      name,
+      title: `Senior ${specialization} Practitioner`,
       specialization,
-      experienceYears: experience,
-      consultationFee: fee,
+      qualifications: ['BAMS', 'MD (Ayurveda)', 'Fellowship in Panchakarma'],
+      experienceYears,
       rating,
       reviewCount,
-      languages: rng.pickMultiple(ALL_LANGUAGES, rng.nextInt(2, 4)),
-      qualifications: rng.pickMultiple(ALL_QUALIFICATIONS, rng.nextInt(2, 3)),
-      clinicName: clinic,
-      city,
-      bio: `Dedicated Ayurvedic practitioner specializing in holistic ${specialization} treatments with ${experience} years of clinical expertise.`,
-      avatarUrl: `${baseAvatar}?w=300&auto=format&fit=crop&q=80`,
-      isAvailableToday: rng.next() > 0.25,
       ratingCount: reviewCount,
-    };
+      consultationFee,
+      languages: ['English', 'Hindi', 'Sanskrit'],
+      clinicName,
+      city,
+      bio: `Dr. ${firstName} ${lastName} is a renowned ${specialization} specialist with over ${experienceYears} years of classical clinical practice. Specialized in pulse diagnosis, dosha balancing, and custom herbal decoction regimens.`,
+      avatarUrl,
+      isAvailableToday,
+    });
   }
-
   return doctors;
+}
+
+export function isTimeInPast(dateStr: string, timeStr: string): boolean {
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  if (dateStr < todayStr) return true;
+  if (dateStr > todayStr) return false;
+
+  const [timePart, modifier] = timeStr.split(' ');
+  const [hoursStr, minutesStr] = timePart.split(':');
+  let hours = parseInt(hoursStr, 10);
+  const minutes = parseInt(minutesStr, 10);
+
+  if (modifier === 'PM' && hours < 12) hours += 12;
+  if (modifier === 'AM' && hours === 12) hours = 0;
+
+  const slotDate = new Date(now);
+  slotDate.setHours(hours, minutes, 0, 0);
+
+  return slotDate < now;
 }
 
 export function generateSlotsForDoctor(doctorId: string, dateStr: string): Slot[] {
@@ -165,13 +200,17 @@ export function generateSlotsForDoctor(doctorId: string, dateStr: string): Slot[
     { time: '07:45 PM', timeOfDay: 'Evening' as const },
   ];
 
-  return times.map((t, idx) => ({
-    id: `slot_${doctorId}_${dateStr}_${idx}`,
-    doctorId,
-    date: dateStr,
-    time: t.time,
-    timeOfDay: t.timeOfDay,
-    price: 1000,
-    isBooked: rng.next() > 0.7,
-  }));
+  return times.map((t, idx) => {
+    const expired = isTimeInPast(dateStr, t.time);
+    return {
+      id: `slot_${doctorId}_${dateStr}_${idx}`,
+      doctorId,
+      date: dateStr,
+      time: t.time,
+      timeOfDay: t.timeOfDay,
+      price: 1000,
+      isBooked: expired || rng.next() > 0.7,
+      isExpired: expired,
+    };
+  });
 }

@@ -3,7 +3,7 @@ import type { HealthRecord, HealthRecordFilterParams } from '@/features/health-r
 import type { Product, ProductFilterParams } from '@/features/shop/types';
 
 import type { PaginatedResponse } from '../client';
-import { generateDoctors, generateSlotsForDoctor } from './doctors';
+import { generateDoctors, generateSlotsForDoctor, isTimeInPast } from './doctors';
 import { generateProducts } from './products';
 import { generateHealthRecords } from './records';
 
@@ -18,6 +18,8 @@ class InMemoryDatabase {
     this.doctors = undefined;
     this.products = undefined;
     this.records = undefined;
+    this.bookings.clear();
+    this.slotBookings.clear();
   }
 
   getDoctors(): Doctor[] {
@@ -126,6 +128,10 @@ class InMemoryDatabase {
       throw new Error('SLOT_CONFLICT: This slot has already been booked by another user.');
     }
 
+    if (isTimeInPast(booking.date, booking.time)) {
+      throw new Error('EXPIRED_SLOT: This appointment time slot has already expired.');
+    }
+
     const bookingId = `book_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const createdBooking: Booking = {
       ...booking,
@@ -136,6 +142,45 @@ class InMemoryDatabase {
 
     this.slotBookings.add(booking.slotId);
     this.bookings.set(bookingId, createdBooking);
+
+    // Cross-Module Integration: Auto-inject confirmed consultation record into patient timeline
+    const now = new Date();
+    const newRecord: HealthRecord = {
+      id: `rec_${Date.now()}`,
+      patientId: 'patient_default',
+      type: 'consultation',
+      title: `Ayurvedic Consultation - ${booking.doctorName}`,
+      doctorName: booking.doctorName,
+      clinicOrLabName: `${booking.specialization} Clinical Wing`,
+      date: now.toISOString(),
+      formattedDate: now.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }),
+      monthYearGroup: `${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`,
+      summary: `Confirmed clinical consultation for: ${booking.symptoms}`,
+      notes: `Consultation confirmed for patient ${booking.patientName} (Age: ${booking.patientAge}). Reported chief symptoms: ${booking.symptoms}. Scheduled slot: ${booking.date} at ${booking.time}. Consultation Fee: ₹${booking.consultationFee}.`,
+      vitals: {
+        dosha: 'Vata-Pitta',
+        bp: '120/80',
+        pulse: 74,
+        weight: 68,
+      },
+      attachments: [
+        {
+          id: `att_${Date.now()}_rec`,
+          name: `Consultation_Receipt_${booking.doctorId}.pdf`,
+          type: 'pdf',
+          url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=800',
+          size: '1.2 MB',
+        },
+      ],
+      tags: ['consultation', booking.specialization.toLowerCase(), 'confirmed', 'amrutam'],
+    };
+
+    this.getHealthRecords().unshift(newRecord);
+
     return createdBooking;
   }
 

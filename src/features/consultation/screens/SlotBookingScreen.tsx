@@ -1,5 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 import type { RouteProp } from '@react-navigation/native';
@@ -12,10 +19,9 @@ import type { RootStackParamList } from '@/navigation/types';
 import { Button } from '@/shared/components/Button';
 import { Header } from '@/shared/components/Header';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
-import { TextField } from '@/shared/components/TextField';
 import { Typography } from '@/shared/components/Typography';
 import { ms } from '@/shared/utils/scale';
-import { showErrorToast } from '@/shared/utils/toast';
+import { showErrorToast, showSuccessToast } from '@/shared/utils/toast';
 
 import { useBookSlot, useDoctorDetail, useDoctorSlots } from '../hooks/useDoctors';
 import type { Slot } from '../types';
@@ -28,17 +34,36 @@ export function SlotBookingScreen(): React.JSX.Element {
   const { doctorId } = route.params;
   const { t } = useLanguage();
 
-  const selectedDate = new Date().toISOString().split('T')[0];
   const { data: doctor } = useDoctorDetail(doctorId);
-  const { data: slots, isLoading: loadingSlots } = useDoctorSlots(doctorId, selectedDate);
-  const { mutate: bookSlot, isPending: isBooking } = useBookSlot();
-
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+
   const [patientName, setPatientName] = useState('');
   const [patientPhone, setPatientPhone] = useState('');
   const [patientAge, setPatientAge] = useState('');
   const [symptoms, setSymptoms] = useState('');
 
+  const { data: slots, isLoading: loadingSlots } = useDoctorSlots(doctorId, selectedDate);
+  const bookMutation = useBookSlot();
+  const isBooking = bookMutation.isPending;
+
+  // Next 7 days for date picker
+  const availableDates = useMemo(() => {
+    const dates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() + i);
+      const iso = d.toISOString().split('T')[0];
+      const dayName =
+        i === 0 ? t('common.today', 'Today') : d.toLocaleDateString('en-US', { weekday: 'short' });
+      const dayNum = d.getDate();
+      const monthName = d.toLocaleDateString('en-US', { month: 'short' });
+      dates.push({ iso, dayName, dayNum, monthName });
+    }
+    return dates;
+  }, [t]);
+
+  // Group slots by timeOfDay
   const morningSlots = useMemo(
     () => slots?.filter((s) => s.timeOfDay === 'Morning') ?? [],
     [slots],
@@ -52,94 +77,128 @@ export function SlotBookingScreen(): React.JSX.Element {
     [slots],
   );
 
-  const handleConfirmBooking = () => {
-    if (!selectedSlot || !doctor) return;
-    if (!patientName.trim() || !patientPhone.trim()) {
+  const handleConfirmBooking = async () => {
+    if (!doctor || !selectedSlot) {
       showErrorToast(
-        t('consultation.fillDetails', 'Please fill in patient details'),
-        t('common.error', 'Error'),
+        t('consultation.selectSlotFirst', 'Please select an appointment time slot.'),
+        t('consultation.slotRequired', 'Slot Required'),
+      );
+      return;
+    }
+    if (!patientName.trim()) {
+      showErrorToast(
+        t('consultation.enterPatientName', 'Please enter the patient name.'),
+        t('consultation.nameRequired', 'Name Required'),
+      );
+      return;
+    }
+    if (!patientPhone.trim() || patientPhone.length < 8) {
+      showErrorToast(
+        t('consultation.enterValidPhone', 'Please enter a valid contact phone number.'),
+        t('consultation.phoneRequired', 'Phone Required'),
       );
       return;
     }
 
-    bookSlot(
-      {
+    try {
+      const createdBooking = await bookMutation.mutateAsync({
         doctorId: doctor.id,
         doctorName: doctor.name,
         specialization: doctor.specialization,
         slotId: selectedSlot.id,
         date: selectedSlot.date,
         time: selectedSlot.time,
-        patientName,
-        patientPhone,
-        patientAge: parseInt(patientAge, 10) || 25,
-        symptoms,
+        patientName: patientName.trim(),
+        patientPhone: patientPhone.trim(),
+        patientAge: parseInt(patientAge, 10) || 30,
+        symptoms: symptoms.trim() || t('consultation.generalConsultation', 'General Consultation'),
         consultationFee: doctor.consultationFee,
-      },
-      {
-        onSuccess: (booking: any) => {
-          navigate(NAVIGATION.BOOKING_CONFIRMATION, { bookingId: booking.id });
-        },
-        onError: (err: any) => {
-          showErrorToast(
-            err?.message || 'Could not complete booking',
-            t('common.error', 'Booking Failed'),
-          );
-        },
-      },
-    );
+      });
+
+      showSuccessToast(
+        t('consultation.bookingConfirmedToast', 'Appointment booked with {{name}}', {
+          name: doctor.name,
+        }),
+        t('consultation.confirmed', 'Booking Confirmed'),
+      );
+
+      navigate(NAVIGATION.BOOKING_CONFIRMATION, { bookingId: createdBooking.id });
+    } catch (err: any) {
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        t('consultation.bookingFailed', 'Could not complete booking.');
+      showErrorToast(errorMsg, t('consultation.bookingError', 'Booking Error'));
+    }
   };
 
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
-      {/* Global Consistent Header with Close Action */}
-      <Header showClose title={t('consultation.selectSlot', 'Select Slot')} />
+      <Header
+        showClose
+        subtitle={doctor ? `Dr. ${doctor.name} • ₹${doctor.consultationFee}` : undefined}
+        title={t('consultation.bookAppointment', 'Book Appointment')}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Doctor Summary Card */}
-        {doctor && (
-          <View style={styles.doctorSummary}>
-            <View style={styles.doctorInfoRow}>
-              <View style={styles.docAvatarCircle}>
-                <Ionicons color={theme.colors.primary} name="medkit" size={ms(22)} />
-              </View>
-              <View style={styles.docTextWrap}>
-                <Typography variant="h3">{doctor.name}</Typography>
-                <Typography style={styles.specText} variant="bodySmall">
-                  {doctor.specialization}
-                </Typography>
-              </View>
-            </View>
-            <View style={styles.feeBadge}>
-              <Typography style={styles.feeText} variant="label">
-                ₹{doctor.consultationFee}
-              </Typography>
-            </View>
-          </View>
-        )}
-
-        {/* Slot Selection Section */}
+        {/* Date Selector Row */}
         <Typography style={styles.sectionTitle} variant="h3">
-          {t('consultation.availableSlots', 'Available Slots')}
+          {t('consultation.selectDate', 'Select Date')}
+        </Typography>
+        <ScrollView
+          contentContainerStyle={styles.dateScroll}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        >
+          {availableDates.map((item) => {
+            const isSelected = selectedDate === item.iso;
+            return (
+              <TouchableOpacity
+                accessibilityLabel={`${item.dayName} ${item.monthName} ${item.dayNum}`}
+                accessibilityRole="button"
+                key={item.iso}
+                onPress={() => {
+                  setSelectedDate(item.iso);
+                  setSelectedSlot(null);
+                }}
+                style={[styles.dateCard, isSelected && styles.dateCardSelected]}
+              >
+                <Text style={[styles.dayName, isSelected && styles.dayNameSelected]}>
+                  {item.dayName}
+                </Text>
+                <Text style={[styles.dayNum, isSelected && styles.dayNumSelected]}>
+                  {item.dayNum}
+                </Text>
+                <Text style={[styles.monthName, isSelected && styles.monthNameSelected]}>
+                  {item.monthName}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Time Slot Selection */}
+        <Typography style={styles.sectionTitle} variant="h3">
+          {t('consultation.selectTimeSlot', 'Select Time Slot')}
         </Typography>
 
         {loadingSlots ? (
-          <View style={styles.loaderWrap}>
+          <View style={styles.slotsLoader}>
             <ActivityIndicator color={theme.colors.primary} size="small" />
-            <Typography style={styles.loadingText} variant="caption">
-              {t('consultation.loadingSlots', 'Loading slots...')}
+            <Typography color={theme.colors.textSecondary} variant="caption">
+              {t('consultation.checkingSlots', 'Checking available slots...')}
             </Typography>
           </View>
         ) : (
-          <>
+          <View style={styles.slotsContainer}>
             {morningSlots.length > 0 && (
               <View style={styles.timeSection}>
                 <View style={styles.sectionHeaderRow}>
-                  <Ionicons color={theme.colors.secondary} name="sunny-outline" size={ms(16)} />
+                  <Ionicons color={theme.colors.primary} name="sunny-outline" size={ms(16)} />
                   <Typography style={styles.timeSectionLabel} variant="label">
                     {t('consultation.morning', 'Morning')}
                   </Typography>
@@ -147,23 +206,24 @@ export function SlotBookingScreen(): React.JSX.Element {
                 <View style={styles.slotsGrid}>
                   {morningSlots.map((slot) => {
                     const isSelected = selectedSlot?.id === slot.id;
+                    const isUnavailable = slot.isBooked || slot.isExpired;
                     return (
                       <TouchableOpacity
-                        accessibilityLabel={`${slot.time}, ${slot.isBooked ? 'Booked' : 'Available'}`}
+                        accessibilityLabel={`${slot.time}, ${slot.isExpired ? 'Expired' : slot.isBooked ? 'Booked' : 'Available'}`}
                         accessibilityRole="button"
-                        disabled={slot.isBooked}
+                        disabled={isUnavailable}
                         key={slot.id}
                         onPress={() => setSelectedSlot(slot)}
                         style={[
                           styles.slotChip,
-                          slot.isBooked && styles.slotBooked,
+                          isUnavailable && styles.slotBooked,
                           isSelected && styles.slotSelected,
                         ]}
                       >
                         <Text
                           style={[
                             styles.slotText,
-                            slot.isBooked && styles.slotTextBooked,
+                            isUnavailable && styles.slotTextBooked,
                             isSelected && styles.slotTextSelected,
                           ]}
                         >
@@ -191,23 +251,24 @@ export function SlotBookingScreen(): React.JSX.Element {
                 <View style={styles.slotsGrid}>
                   {afternoonSlots.map((slot) => {
                     const isSelected = selectedSlot?.id === slot.id;
+                    const isUnavailable = slot.isBooked || slot.isExpired;
                     return (
                       <TouchableOpacity
-                        accessibilityLabel={`${slot.time}, ${slot.isBooked ? 'Booked' : 'Available'}`}
+                        accessibilityLabel={`${slot.time}, ${slot.isExpired ? 'Expired' : slot.isBooked ? 'Booked' : 'Available'}`}
                         accessibilityRole="button"
-                        disabled={slot.isBooked}
+                        disabled={isUnavailable}
                         key={slot.id}
                         onPress={() => setSelectedSlot(slot)}
                         style={[
                           styles.slotChip,
-                          slot.isBooked && styles.slotBooked,
+                          isUnavailable && styles.slotBooked,
                           isSelected && styles.slotSelected,
                         ]}
                       >
                         <Text
                           style={[
                             styles.slotText,
-                            slot.isBooked && styles.slotTextBooked,
+                            isUnavailable && styles.slotTextBooked,
                             isSelected && styles.slotTextSelected,
                           ]}
                         >
@@ -223,7 +284,7 @@ export function SlotBookingScreen(): React.JSX.Element {
             {eveningSlots.length > 0 && (
               <View style={styles.timeSection}>
                 <View style={styles.sectionHeaderRow}>
-                  <Ionicons color={theme.colors.info} name="moon-outline" size={ms(16)} />
+                  <Ionicons color={theme.colors.primary} name="moon-outline" size={ms(16)} />
                   <Typography style={styles.timeSectionLabel} variant="label">
                     {t('consultation.evening', 'Evening')}
                   </Typography>
@@ -231,23 +292,24 @@ export function SlotBookingScreen(): React.JSX.Element {
                 <View style={styles.slotsGrid}>
                   {eveningSlots.map((slot) => {
                     const isSelected = selectedSlot?.id === slot.id;
+                    const isUnavailable = slot.isBooked || slot.isExpired;
                     return (
                       <TouchableOpacity
-                        accessibilityLabel={`${slot.time}, ${slot.isBooked ? 'Booked' : 'Available'}`}
+                        accessibilityLabel={`${slot.time}, ${slot.isExpired ? 'Expired' : slot.isBooked ? 'Booked' : 'Available'}`}
                         accessibilityRole="button"
-                        disabled={slot.isBooked}
+                        disabled={isUnavailable}
                         key={slot.id}
                         onPress={() => setSelectedSlot(slot)}
                         style={[
                           styles.slotChip,
-                          slot.isBooked && styles.slotBooked,
+                          isUnavailable && styles.slotBooked,
                           isSelected && styles.slotSelected,
                         ]}
                       >
                         <Text
                           style={[
                             styles.slotText,
-                            slot.isBooked && styles.slotTextBooked,
+                            isUnavailable && styles.slotTextBooked,
                             isSelected && styles.slotTextSelected,
                           ]}
                         >
@@ -259,63 +321,108 @@ export function SlotBookingScreen(): React.JSX.Element {
                 </View>
               </View>
             )}
-          </>
+          </View>
         )}
 
-        {/* Patient Details Form Section */}
+        {/* Patient Details Form */}
         <Typography style={styles.sectionTitle} variant="h3">
-          {t('consultation.patientInfo', 'Patient Information')}
+          {t('consultation.patientDetails', 'Patient Details')}
         </Typography>
 
-        <View style={styles.formCard}>
-          <TextField
-            label={t('consultation.fullName', 'Full Name')}
-            leftIcon={
-              <Ionicons color={theme.colors.textSecondary} name="person-outline" size={ms(18)} />
-            }
-            onChangeText={setPatientName}
-            placeholder={t('consultation.patientNamePlaceholder', 'Enter patient name')}
-            value={patientName}
-          />
+        <View style={styles.formContainer}>
+          <View style={styles.inputGroup}>
+            <Typography style={styles.inputLabel} variant="label">
+              {t('consultation.fullName', 'Full Name')} *
+            </Typography>
+            <TextInput
+              onChangeText={setPatientName}
+              placeholder={t('consultation.fullNamePlaceholder', 'e.g. Ramesh Patel')}
+              placeholderTextColor={theme.colors.textTertiary}
+              style={styles.input}
+              value={patientName}
+            />
+          </View>
 
-          <TextField
-            keyboardType="phone-pad"
-            label={t('consultation.phone', 'Phone Number')}
-            leftIcon={
-              <Ionicons color={theme.colors.textSecondary} name="call-outline" size={ms(18)} />
-            }
-            onChangeText={setPatientPhone}
-            placeholder="+91 98765 43210"
-            value={patientPhone}
-          />
+          <View style={styles.rowInputs}>
+            <View style={[styles.inputGroup, { flex: 1 }]}>
+              <Typography style={styles.inputLabel} variant="label">
+                {t('consultation.phone', 'Phone')} *
+              </Typography>
+              <TextInput
+                keyboardType="phone-pad"
+                onChangeText={setPatientPhone}
+                placeholder="+91 98765 43210"
+                placeholderTextColor={theme.colors.textTertiary}
+                style={styles.input}
+                value={patientPhone}
+              />
+            </View>
 
-          <TextField
-            keyboardType="number-pad"
-            label={t('consultation.age', 'Age')}
-            leftIcon={
-              <Ionicons color={theme.colors.textSecondary} name="calendar-outline" size={ms(18)} />
-            }
-            onChangeText={setPatientAge}
-            placeholder="e.g. 32"
-            value={patientAge}
-          />
+            <View style={[styles.inputGroup, { width: ms(80) }]}>
+              <Typography style={styles.inputLabel} variant="label">
+                {t('consultation.age', 'Age')}
+              </Typography>
+              <TextInput
+                keyboardType="number-pad"
+                maxLength={3}
+                onChangeText={setPatientAge}
+                placeholder="32"
+                placeholderTextColor={theme.colors.textTertiary}
+                style={styles.input}
+                value={patientAge}
+              />
+            </View>
+          </View>
 
-          <TextField
-            label={t('consultation.symptoms', 'Primary Health Concern / Symptoms')}
-            multiline
-            numberOfLines={3}
-            onChangeText={setSymptoms}
-            placeholder={t(
-              'consultation.symptomsPlaceholder',
-              'Describe symptoms, chronic conditions, or allergies...',
-            )}
-            value={symptoms}
-          />
+          <View style={styles.inputGroup}>
+            <Typography style={styles.inputLabel} variant="label">
+              {t('consultation.healthSymptoms', 'Health Concern / Symptoms')}
+            </Typography>
+            <TextInput
+              multiline
+              numberOfLines={3}
+              onChangeText={setSymptoms}
+              placeholder={t(
+                'consultation.symptomsPlaceholder',
+                'Describe symptoms, chronic conditions, or allergies...',
+              )}
+              placeholderTextColor={theme.colors.textTertiary}
+              style={[styles.input, styles.textArea]}
+              value={symptoms}
+            />
+          </View>
         </View>
+
+        {/* Pricing Summary Card */}
+        {doctor && (
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <Typography style={styles.summaryLabel} variant="bodySmall">
+                {t('consultation.fee', 'Consultation Fee')}
+              </Typography>
+              <Typography variant="bodySemiBold">₹{doctor.consultationFee}</Typography>
+            </View>
+            <View style={styles.summaryRow}>
+              <Typography style={styles.summaryLabel} variant="bodySmall">
+                {t('consultation.bookingProtection', 'AYUSH Booking Protection')}
+              </Typography>
+              <Typography color={theme.colors.success} variant="bodySmallSemiBold">
+                {t('common.free', 'FREE')}
+              </Typography>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.summaryRow}>
+              <Typography variant="h3">{t('common.total', 'Total Payable')}</Typography>
+              <Typography color={theme.colors.primary} variant="h2">
+                ₹{doctor.consultationFee}
+              </Typography>
+            </View>
+          </View>
+        )}
       </ScrollView>
 
-      {/* Sticky Bottom Bar with Safe Inset */}
-      <View style={styles.bottomBar}>
+      {/* Sticky Confirm Button */}
+      <View style={styles.footer}>
         <Button
           disabled={!selectedSlot || !patientName.trim() || !patientPhone.trim()}
           isLoading={isBooking}
@@ -343,74 +450,72 @@ export function SlotBookingScreen(): React.JSX.Element {
 const styles = StyleSheet.create((theme, rt) => ({
   scrollContent: {
     padding: ms(16),
-    paddingBottom: ms(120),
+    paddingBottom: ms(90),
   },
-  doctorSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  sectionTitle: {
+    marginBottom: ms(10),
+    marginTop: ms(8),
+  },
+  dateScroll: {
+    gap: ms(10),
+    paddingBottom: ms(8),
+  },
+  dateCard: {
+    width: ms(65),
+    height: ms(75),
     backgroundColor: theme.colors.surface,
-    padding: ms(14),
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: theme.colors.border,
     boxShadow: theme.shadows.sm,
-    marginBottom: ms(16),
   },
-  doctorInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(10),
-    flex: 1,
+  dateCardSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
-  docAvatarCircle: {
-    width: ms(40),
-    height: ms(40),
-    borderRadius: ms(20),
-    backgroundColor: theme.colors.successLight,
-    alignItems: 'center',
-    justifyContent: 'center',
+  dayName: {
+    fontFamily: theme.fonts.regular,
+    fontSize: ms(11),
+    color: theme.colors.textSecondary,
+    marginBottom: ms(2),
   },
-  docTextWrap: {
-    flex: 1,
+  dayNameSelected: {
+    color: theme.colors.textInverse,
   },
-  specText: {
-    color: theme.colors.primary,
-    marginTop: ms(1),
+  dayNum: {
+    fontFamily: theme.fonts.bold,
+    fontSize: ms(18),
+    color: theme.colors.text,
   },
-  feeBadge: {
-    backgroundColor: theme.colors.surfaceElevated,
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+  dayNumSelected: {
+    color: theme.colors.textInverse,
   },
-  feeText: {
-    color: theme.colors.primaryDark,
+  monthName: {
+    fontFamily: theme.fonts.regular,
+    fontSize: ms(10),
+    color: theme.colors.textTertiary,
   },
-  sectionTitle: {
-    marginTop: ms(8),
-    marginBottom: ms(10),
+  monthNameSelected: {
+    color: theme.colors.textInverse,
   },
-  loaderWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  slotsLoader: {
     paddingVertical: ms(20),
+    alignItems: 'center',
     gap: ms(8),
   },
-  loadingText: {
-    color: theme.colors.textSecondary,
+  slotsContainer: {
+    gap: ms(14),
+    marginBottom: ms(12),
   },
   timeSection: {
-    marginBottom: ms(14),
+    gap: ms(8),
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: ms(6),
-    marginBottom: ms(8),
   },
   timeSectionLabel: {
     color: theme.colors.textSecondary,
@@ -421,18 +526,16 @@ const styles = StyleSheet.create((theme, rt) => ({
     gap: ms(8),
   },
   slotChip: {
-    paddingVertical: ms(8),
     paddingHorizontal: ms(12),
+    paddingVertical: ms(8),
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    minWidth: ms(76),
-    alignItems: 'center',
   },
   slotSelected: {
     backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primaryDark,
+    borderColor: theme.colors.primary,
   },
   slotBooked: {
     backgroundColor: theme.colors.surfaceElevated,
@@ -446,32 +549,77 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   slotTextSelected: {
     color: theme.colors.textInverse,
-    fontFamily: theme.fonts.bold,
   },
   slotTextBooked: {
     color: theme.colors.textTertiary,
     textDecorationLine: 'line-through',
   },
-  formCard: {
+  formContainer: {
     backgroundColor: theme.colors.surface,
-    padding: ms(16),
     borderRadius: theme.radius.lg,
+    padding: ms(16),
+    gap: ms(12),
     borderWidth: 1,
     borderColor: theme.colors.border,
-    boxShadow: theme.shadows.sm,
-    marginTop: ms(4),
+    marginBottom: ms(16),
   },
-  bottomBar: {
+  inputGroup: {
+    gap: ms(4),
+  },
+  inputLabel: {
+    color: theme.colors.textSecondary,
+  },
+  input: {
+    backgroundColor: theme.colors.surfaceElevated,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(10),
+    fontFamily: theme.fonts.regular,
+    fontSize: ms(14),
+    color: theme.colors.text,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  textArea: {
+    height: ms(70),
+    textAlignVertical: 'top',
+  },
+  rowInputs: {
+    flexDirection: 'row',
+    gap: ms(12),
+  },
+  summaryCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: ms(16),
+    gap: ms(8),
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  summaryLabel: {
+    color: theme.colors.textSecondary,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: ms(4),
+  },
+  footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    paddingHorizontal: ms(20),
+    paddingHorizontal: ms(16),
     paddingTop: ms(12),
     paddingBottom: Math.max(rt.insets.bottom, ms(16)),
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
     boxShadow: theme.shadows.md,
   },
   confirmBtn: {

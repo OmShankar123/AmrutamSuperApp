@@ -7,8 +7,9 @@ import { useRoute } from '@react-navigation/native';
 import { Image } from 'expo-image';
 
 import { useLanguage } from '@/core/localization/useLanguage';
+import { useCartStore } from '@/features/shop/store/useCartStore';
 import { NAVIGATION } from '@/navigation/constants';
-import { goBack } from '@/navigation/navigationRef';
+import { goBack, navigate } from '@/navigation/navigationRef';
 import type { RootStackParamList } from '@/navigation/types';
 import { Badge } from '@/shared/components/Badge';
 import { Button } from '@/shared/components/Button';
@@ -29,11 +30,13 @@ export function RecordDetailScreen(): React.JSX.Element {
   const route = useRoute<RecordDetailRouteProp>();
   const { recordId } = route.params;
   const { t } = useLanguage();
+  const addToCart = useCartStore((s) => s.addToCart);
 
   const { data: record, isLoading, isError } = useHealthRecordDetail(recordId);
 
   const [selectedImage, setSelectedImage] = useState<RecordAttachment | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isRefilling, setIsRefilling] = useState(false);
 
   const handleDownloadPdf = () => {
     setIsDownloading(true);
@@ -44,6 +47,43 @@ export function RecordDetailScreen(): React.JSX.Element {
         t('healthRecords.downloadPdf', 'Download PDF Report'),
       );
     }, 600);
+  };
+
+  const handleRefillPrescription = () => {
+    if (!record?.medications) return;
+    setIsRefilling(true);
+    setTimeout(() => {
+      record.medications?.forEach((med, idx) => {
+        addToCart(
+          {
+            id: `prod_med_${idx}`,
+            name: med.name,
+            subtitle: med.dosage,
+            category: 'Immunity',
+            healthConcerns: ['Low Energy'],
+            price: 499,
+            originalPrice: 599,
+            discountPercentage: 15,
+            rating: 4.8,
+            reviewCount: 120,
+            inStock: true,
+            stockCount: 10,
+            imageUrl: 'https://images.unsplash.com/photo-1608248597359-07f9c2d1b0ef?w=600',
+            description: `Authentic Ayurvedic formulation: ${med.name}. Dosage: ${med.dosage}. Frequency: ${med.frequency}.`,
+            ingredients: ['Amla', 'Ashwagandha', 'Tulsi'],
+            benefits: ['Dosha balancing', 'Vitality enhancement'],
+            howToUse: med.frequency,
+          },
+          1,
+        );
+      });
+      setIsRefilling(false);
+      showSuccessToast(
+        t('shop.addedToCartDesc', 'Prescribed formulations added to your shopping bag.'),
+        t('shop.addedToCart', 'Added to Cart'),
+      );
+      navigate(NAVIGATION.CART);
+    }, 400);
   };
 
   if (isLoading) {
@@ -205,6 +245,18 @@ export function RecordDetailScreen(): React.JSX.Element {
                 </View>
               </View>
             ))}
+
+            {/* Refill Button (Cross-Module Shop Integration) */}
+            <Button
+              isLoading={isRefilling}
+              leftIcon={
+                <Ionicons color={theme.colors.textInverse} name="bag-add-outline" size={ms(18)} />
+              }
+              onPress={handleRefillPrescription}
+              style={styles.refillBtn}
+              title="Order Prescribed Medicines"
+              variant="primary"
+            />
           </View>
         )}
 
@@ -254,13 +306,11 @@ export function RecordDetailScreen(): React.JSX.Element {
         {/* Download PDF Button */}
         <Button
           isLoading={isDownloading}
-          leftIcon={
-            <Ionicons color={theme.colors.textInverse} name="download-outline" size={ms(18)} />
-          }
+          leftIcon={<Ionicons color={theme.colors.primary} name="download-outline" size={ms(18)} />}
           onPress={handleDownloadPdf}
           style={styles.downloadBtn}
           title={t('healthRecords.downloadPdf', 'Download PDF Report')}
-          variant="primary"
+          variant="outline"
         />
       </ScrollView>
 
@@ -413,6 +463,9 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.textSecondary,
     marginTop: ms(2),
   },
+  refillBtn: {
+    marginTop: ms(12),
+  },
   attachmentsGrid: {
     gap: ms(10),
   },
@@ -442,7 +495,7 @@ const styles = StyleSheet.create((theme) => ({
     color: theme.colors.textSecondary,
   },
   downloadBtn: {
-    marginTop: ms(8),
+    marginTop: ms(4),
     marginBottom: ms(20),
   },
   imageModalBackdrop: {

@@ -20,10 +20,10 @@ describe('Doctor Consultation & Slot Conflict Engine', () => {
     });
   });
 
-  test('successfully books an available time slot', () => {
+  test('successfully books an available time slot and injects record into health timeline', () => {
     const doctor = db.getDoctors()[0];
-    const slots = db.getDoctorSlots(doctor.id, '2026-08-30');
-    const availableSlot = slots.find((s) => !s.isBooked);
+    const slots = db.getDoctorSlots(doctor.id, '2026-12-15');
+    const availableSlot = slots.find((s) => !s.isBooked && !s.isExpired);
     expect(availableSlot).toBeDefined();
 
     const booking = db.bookSlot({
@@ -42,12 +42,18 @@ describe('Doctor Consultation & Slot Conflict Engine', () => {
 
     expect(booking.id).toBeDefined();
     expect(booking.status).toBe('confirmed');
+
+    // Verify cross-module timeline integration
+    const latestTimelineRecord = db.getHealthRecords()[0];
+    expect(latestTimelineRecord.type).toBe('consultation');
+    expect(latestTimelineRecord.doctorName).toBe(doctor.name);
+    expect(latestTimelineRecord.attachments.length).toBeGreaterThanOrEqual(1);
   });
 
   test('throws SLOT_CONFLICT error when booking the same slot twice', () => {
     const doctor = db.getDoctors()[0];
-    const slots = db.getDoctorSlots(doctor.id, '2026-08-30');
-    const availableSlot = slots.find((s) => !s.isBooked);
+    const slots = db.getDoctorSlots(doctor.id, '2026-12-15');
+    const availableSlot = slots.find((s) => !s.isBooked && !s.isExpired);
 
     db.bookSlot({
       doctorId: doctor.id,
@@ -78,5 +84,25 @@ describe('Doctor Consultation & Slot Conflict Engine', () => {
         consultationFee: doctor.consultationFee,
       });
     }).toThrow('SLOT_CONFLICT');
+  });
+
+  test('throws EXPIRED_SLOT error when attempting to book a past slot', () => {
+    const doctor = db.getDoctors()[0];
+
+    expect(() => {
+      db.bookSlot({
+        doctorId: doctor.id,
+        doctorName: doctor.name,
+        specialization: doctor.specialization,
+        slotId: `slot_past_${Date.now()}`,
+        date: '2020-01-01',
+        time: '09:00 AM',
+        patientName: 'Late Patient',
+        patientPhone: '+91 99999 33333',
+        patientAge: 40,
+        symptoms: 'Back pain',
+        consultationFee: doctor.consultationFee,
+      });
+    }).toThrow('EXPIRED_SLOT');
   });
 });

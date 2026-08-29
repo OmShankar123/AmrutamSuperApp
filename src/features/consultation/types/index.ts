@@ -17,6 +17,7 @@ export interface Slot {
   time: string;
   timeOfDay: TimeOfDay;
   isBooked: boolean;
+  isExpired?: boolean;
   price: number;
 }
 
