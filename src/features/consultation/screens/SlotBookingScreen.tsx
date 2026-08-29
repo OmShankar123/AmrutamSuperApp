@@ -1,12 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 import type { RouteProp } from '@react-navigation/native';
@@ -23,6 +16,8 @@ import { Typography } from '@/shared/components/Typography';
 import { ms } from '@/shared/utils/scale';
 import { showErrorToast, showSuccessToast } from '@/shared/utils/toast';
 
+import { PatientDetailsForm } from '../components/PatientDetailsForm';
+import { SlotPicker } from '../components/SlotPicker';
 import { useBookSlot, useDoctorDetail, useDoctorSlots } from '../hooks/useDoctors';
 import type { Slot } from '../types';
 
@@ -62,20 +57,6 @@ export function SlotBookingScreen(): React.JSX.Element {
     }
     return dates;
   }, [t]);
-
-  // Group slots by timeOfDay
-  const morningSlots = useMemo(
-    () => slots?.filter((s) => s.timeOfDay === 'Morning') ?? [],
-    [slots],
-  );
-  const afternoonSlots = useMemo(
-    () => slots?.filter((s) => s.timeOfDay === 'Afternoon') ?? [],
-    [slots],
-  );
-  const eveningSlots = useMemo(
-    () => slots?.filter((s) => s.timeOfDay === 'Evening') ?? [],
-    [slots],
-  );
 
   const handleConfirmBooking = async () => {
     if (!doctor || !selectedSlot) {
@@ -181,217 +162,31 @@ export function SlotBookingScreen(): React.JSX.Element {
           })}
         </ScrollView>
 
-        {/* Time Slot Selection */}
+        {/* Extracted Slot Selection Component */}
         <Typography style={styles.sectionTitle} variant="h3">
           {t('consultation.selectTimeSlot', 'Select Time Slot')}
         </Typography>
+        <SlotPicker
+          isLoading={loadingSlots}
+          onSelectSlot={setSelectedSlot}
+          selectedSlot={selectedSlot}
+          slots={slots}
+        />
 
-        {loadingSlots ? (
-          <View style={styles.slotsLoader}>
-            <ActivityIndicator color={theme.colors.primary} size="small" />
-            <Typography color={theme.colors.textSecondary} variant="caption">
-              {t('consultation.checkingSlots', 'Checking available slots...')}
-            </Typography>
-          </View>
-        ) : (
-          <View style={styles.slotsContainer}>
-            {morningSlots.length > 0 && (
-              <View style={styles.timeSection}>
-                <View style={styles.sectionHeaderRow}>
-                  <Ionicons color={theme.colors.primary} name="sunny-outline" size={ms(16)} />
-                  <Typography style={styles.timeSectionLabel} variant="label">
-                    {t('consultation.morning', 'Morning')}
-                  </Typography>
-                </View>
-                <View style={styles.slotsGrid}>
-                  {morningSlots.map((slot) => {
-                    const isSelected = selectedSlot?.id === slot.id;
-                    const isUnavailable = slot.isBooked || slot.isExpired;
-                    return (
-                      <TouchableOpacity
-                        accessibilityLabel={`${slot.time}, ${slot.isExpired ? 'Expired' : slot.isBooked ? 'Booked' : 'Available'}`}
-                        accessibilityRole="button"
-                        disabled={isUnavailable}
-                        key={slot.id}
-                        onPress={() => setSelectedSlot(slot)}
-                        style={[
-                          styles.slotChip,
-                          isUnavailable && styles.slotBooked,
-                          isSelected && styles.slotSelected,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.slotText,
-                            isUnavailable && styles.slotTextBooked,
-                            isSelected && styles.slotTextSelected,
-                          ]}
-                        >
-                          {slot.time}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-
-            {afternoonSlots.length > 0 && (
-              <View style={styles.timeSection}>
-                <View style={styles.sectionHeaderRow}>
-                  <Ionicons
-                    color={theme.colors.primary}
-                    name="partly-sunny-outline"
-                    size={ms(16)}
-                  />
-                  <Typography style={styles.timeSectionLabel} variant="label">
-                    {t('consultation.afternoon', 'Afternoon')}
-                  </Typography>
-                </View>
-                <View style={styles.slotsGrid}>
-                  {afternoonSlots.map((slot) => {
-                    const isSelected = selectedSlot?.id === slot.id;
-                    const isUnavailable = slot.isBooked || slot.isExpired;
-                    return (
-                      <TouchableOpacity
-                        accessibilityLabel={`${slot.time}, ${slot.isExpired ? 'Expired' : slot.isBooked ? 'Booked' : 'Available'}`}
-                        accessibilityRole="button"
-                        disabled={isUnavailable}
-                        key={slot.id}
-                        onPress={() => setSelectedSlot(slot)}
-                        style={[
-                          styles.slotChip,
-                          isUnavailable && styles.slotBooked,
-                          isSelected && styles.slotSelected,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.slotText,
-                            isUnavailable && styles.slotTextBooked,
-                            isSelected && styles.slotTextSelected,
-                          ]}
-                        >
-                          {slot.time}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-
-            {eveningSlots.length > 0 && (
-              <View style={styles.timeSection}>
-                <View style={styles.sectionHeaderRow}>
-                  <Ionicons color={theme.colors.primary} name="moon-outline" size={ms(16)} />
-                  <Typography style={styles.timeSectionLabel} variant="label">
-                    {t('consultation.evening', 'Evening')}
-                  </Typography>
-                </View>
-                <View style={styles.slotsGrid}>
-                  {eveningSlots.map((slot) => {
-                    const isSelected = selectedSlot?.id === slot.id;
-                    const isUnavailable = slot.isBooked || slot.isExpired;
-                    return (
-                      <TouchableOpacity
-                        accessibilityLabel={`${slot.time}, ${slot.isExpired ? 'Expired' : slot.isBooked ? 'Booked' : 'Available'}`}
-                        accessibilityRole="button"
-                        disabled={isUnavailable}
-                        key={slot.id}
-                        onPress={() => setSelectedSlot(slot)}
-                        style={[
-                          styles.slotChip,
-                          isUnavailable && styles.slotBooked,
-                          isSelected && styles.slotSelected,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.slotText,
-                            isUnavailable && styles.slotTextBooked,
-                            isSelected && styles.slotTextSelected,
-                          ]}
-                        >
-                          {slot.time}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Patient Details Form */}
+        {/* Extracted Patient Details Form Component */}
         <Typography style={styles.sectionTitle} variant="h3">
           {t('consultation.patientDetails', 'Patient Details')}
         </Typography>
-
-        <View style={styles.formContainer}>
-          <View style={styles.inputGroup}>
-            <Typography style={styles.inputLabel} variant="label">
-              {t('consultation.fullName', 'Full Name')} *
-            </Typography>
-            <TextInput
-              onChangeText={setPatientName}
-              placeholder={t('consultation.fullNamePlaceholder', 'e.g. Ramesh Patel')}
-              placeholderTextColor={theme.colors.textTertiary}
-              style={styles.input}
-              value={patientName}
-            />
-          </View>
-
-          <View style={styles.rowInputs}>
-            <View style={[styles.inputGroup, { flex: 1 }]}>
-              <Typography style={styles.inputLabel} variant="label">
-                {t('consultation.phone', 'Phone')} *
-              </Typography>
-              <TextInput
-                keyboardType="phone-pad"
-                onChangeText={setPatientPhone}
-                placeholder="+91 98765 43210"
-                placeholderTextColor={theme.colors.textTertiary}
-                style={styles.input}
-                value={patientPhone}
-              />
-            </View>
-
-            <View style={[styles.inputGroup, { width: ms(80) }]}>
-              <Typography style={styles.inputLabel} variant="label">
-                {t('consultation.age', 'Age')}
-              </Typography>
-              <TextInput
-                keyboardType="number-pad"
-                maxLength={3}
-                onChangeText={setPatientAge}
-                placeholder="32"
-                placeholderTextColor={theme.colors.textTertiary}
-                style={styles.input}
-                value={patientAge}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Typography style={styles.inputLabel} variant="label">
-              {t('consultation.healthSymptoms', 'Health Concern / Symptoms')}
-            </Typography>
-            <TextInput
-              multiline
-              numberOfLines={3}
-              onChangeText={setSymptoms}
-              placeholder={t(
-                'consultation.symptomsPlaceholder',
-                'Describe symptoms, chronic conditions, or allergies...',
-              )}
-              placeholderTextColor={theme.colors.textTertiary}
-              style={[styles.input, styles.textArea]}
-              value={symptoms}
-            />
-          </View>
-        </View>
+        <PatientDetailsForm
+          age={patientAge}
+          name={patientName}
+          onAgeChange={setPatientAge}
+          onNameChange={setPatientName}
+          onPhoneChange={setPatientPhone}
+          onSymptomsChange={setSymptoms}
+          phone={patientPhone}
+          symptoms={symptoms}
+        />
 
         {/* Pricing Summary Card */}
         {doctor && (
@@ -499,94 +294,6 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   monthNameSelected: {
     color: theme.colors.textInverse,
-  },
-  slotsLoader: {
-    paddingVertical: ms(20),
-    alignItems: 'center',
-    gap: ms(8),
-  },
-  slotsContainer: {
-    gap: ms(14),
-    marginBottom: ms(12),
-  },
-  timeSection: {
-    gap: ms(8),
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(6),
-  },
-  timeSectionLabel: {
-    color: theme.colors.textSecondary,
-  },
-  slotsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: ms(8),
-  },
-  slotChip: {
-    paddingHorizontal: ms(12),
-    paddingVertical: ms(8),
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  slotSelected: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  slotBooked: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderColor: theme.colors.border,
-    opacity: 0.5,
-  },
-  slotText: {
-    fontFamily: theme.fonts.semiBold,
-    fontSize: ms(12),
-    color: theme.colors.text,
-  },
-  slotTextSelected: {
-    color: theme.colors.textInverse,
-  },
-  slotTextBooked: {
-    color: theme.colors.textTertiary,
-    textDecorationLine: 'line-through',
-  },
-  formContainer: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: ms(16),
-    gap: ms(12),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: ms(16),
-  },
-  inputGroup: {
-    gap: ms(4),
-  },
-  inputLabel: {
-    color: theme.colors.textSecondary,
-  },
-  input: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: ms(12),
-    paddingVertical: ms(10),
-    fontFamily: theme.fonts.regular,
-    fontSize: ms(14),
-    color: theme.colors.text,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  textArea: {
-    height: ms(70),
-    textAlignVertical: 'top',
-  },
-  rowInputs: {
-    flexDirection: 'row',
-    gap: ms(12),
   },
   summaryCard: {
     backgroundColor: theme.colors.surface,

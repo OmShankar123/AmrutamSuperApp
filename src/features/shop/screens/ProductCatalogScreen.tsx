@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   RefreshControl,
   ScrollView,
   TouchableOpacity,
@@ -14,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { NAVIGATION } from '@/navigation/constants';
 import { navigate } from '@/navigation/navigationRef';
-import { Button } from '@/shared/components/Button';
 import { Chip } from '@/shared/components/Chip';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
@@ -24,6 +22,9 @@ import { useDebounce } from '@/shared/hooks';
 import { ms } from '@/shared/utils/scale';
 
 import { ProductCard } from '../components/ProductCard';
+import { ProductFilterModal } from '../components/ProductFilterModal';
+import type { ProductSortOption } from '../components/ProductSortBar';
+import { ProductSortBar } from '../components/ProductSortBar';
 import { useInfiniteProducts } from '../hooks/useProducts';
 import { useCartStore } from '../store/useCartStore';
 import { useWishlistStore } from '../store/useWishlistStore';
@@ -38,17 +39,6 @@ const CATEGORIES: { name: ProductCategory; icon: keyof typeof Ionicons.glyphMap 
   { name: 'Joint Care', icon: 'body-outline' },
   { name: 'Women Health', icon: 'heart-outline' },
   { name: 'Men Health', icon: 'male-outline' },
-];
-
-const HEALTH_CONCERNS: HealthConcern[] = [
-  'Hair Fall',
-  'Dandruff',
-  'Acne & Blemishes',
-  'Acidity & Bloating',
-  'Insomnia',
-  'Joint Pain',
-  'Low Energy',
-  'Hormonal Balance',
 ];
 
 export function ProductCatalogScreen(): React.JSX.Element {
@@ -66,12 +56,8 @@ export function ProductCatalogScreen(): React.JSX.Element {
   const [maxPrice, setMaxPrice] = useState<number | undefined>();
   const [minRating, setMinRating] = useState<number | undefined>();
   const [inStockOnly, setInStockOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<
-    'popularity' | 'price_asc' | 'price_desc' | 'rating' | 'discount' | undefined
-  >('popularity');
-
+  const [sortBy, setSortBy] = useState<ProductSortOption>('popularity');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
 
   const filters = useMemo(
     () => ({
@@ -125,14 +111,6 @@ export function ProductCatalogScreen(): React.JSX.Element {
     setMaxPrice(undefined);
     setMinRating(undefined);
     setInStockOnly(false);
-  };
-
-  const handleApplyFilters = () => {
-    setIsApplyingFilters(true);
-    setTimeout(() => {
-      setIsApplyingFilters(false);
-      setFilterModalVisible(false);
-    }, 200);
   };
 
   const renderItem = useCallback(
@@ -227,67 +205,13 @@ export function ProductCatalogScreen(): React.JSX.Element {
         </ScrollView>
       </View>
 
-      {/* Filter & Sort Bar */}
-      <View style={styles.filterBar}>
-        <TouchableOpacity
-          onPress={() => setFilterModalVisible(true)}
-          style={[styles.filterButton, hasActiveFilters && styles.filterButtonActive]}
-        >
-          <Ionicons
-            color={hasActiveFilters ? theme.colors.primary : theme.colors.text}
-            name="options-outline"
-            size={ms(14)}
-          />
-          <Typography style={styles.filterButtonText} variant="label">
-            {t('common.filter', 'Filters')} {hasActiveFilters ? '●' : ''}
-          </Typography>
-        </TouchableOpacity>
-
-        <ScrollView
-          contentContainerStyle={styles.sortScrollContent}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-        >
-          {(
-            [
-              { label: t('shop.popular', 'Popular'), icon: 'flame-outline', val: 'popularity' },
-              { label: t('shop.highestRated', 'Highest Rated'), icon: 'star', val: 'rating' },
-              {
-                label: t('shop.priceLowToHigh', 'Price: Low to High'),
-                icon: 'trending-up-outline',
-                val: 'price_asc',
-              },
-              {
-                label: t('shop.priceHighToLow', 'Price: High to Low'),
-                icon: 'trending-down-outline',
-                val: 'price_desc',
-              },
-              { label: t('shop.discount', 'Discount'), icon: 'pricetag-outline', val: 'discount' },
-            ] as const
-          ).map((s) => {
-            const isSelected = sortBy === s.val;
-            return (
-              <TouchableOpacity
-                key={s.val}
-                onPress={() => setSortBy(isSelected ? undefined : s.val)}
-                style={[styles.sortPill, isSelected && styles.sortPillActive]}
-              >
-                <Ionicons
-                  color={isSelected ? theme.colors.textInverse : theme.colors.textSecondary}
-                  name={s.icon as any}
-                  size={ms(12)}
-                />
-                <Typography
-                  style={[styles.sortPillText, isSelected ? styles.sortPillTextActive : undefined]}
-                  variant="caption"
-                >
-                  {s.label}
-                </Typography>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+      {/* Extracted Filter & Sort Bar */}
+      <ProductSortBar
+        hasActiveFilters={hasActiveFilters}
+        onOpenFilter={() => setFilterModalVisible(true)}
+        onSortChange={setSortBy}
+        sortBy={sortBy}
+      />
 
       {/* Product Grid */}
       {isLoading ? (
@@ -369,108 +293,20 @@ export function ProductCatalogScreen(): React.JSX.Element {
         </TouchableOpacity>
       )}
 
-      {/* Advanced Filter Modal */}
-      <Modal
-        animationType="slide"
-        onRequestClose={() => setFilterModalVisible(false)}
-        transparent
+      {/* Extracted Advanced Filter Modal */}
+      <ProductFilterModal
+        inStockOnly={inStockOnly}
+        maxPrice={maxPrice}
+        minRating={minRating}
+        onClose={() => setFilterModalVisible(false)}
+        onResetFilters={handleResetFilters}
+        onSelectConcern={setSelectedConcern}
+        onSelectMaxPrice={setMaxPrice}
+        onSelectMinRating={setMinRating}
+        onToggleInStockOnly={setInStockOnly}
+        selectedConcern={selectedConcern}
         visible={filterModalVisible}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Typography variant="h2">{t('common.filter', 'Filter Formulations')}</Typography>
-              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-                <Ionicons color={theme.colors.textSecondary} name="close" size={ms(22)} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBody}>
-              {/* Stock Status */}
-              <Typography style={styles.sectionLabel} variant="label">
-                {t('shop.stockAvailability', 'Stock Availability')}
-              </Typography>
-              <TouchableOpacity
-                onPress={() => setInStockOnly((v) => !v)}
-                style={[styles.checkboxRow, inStockOnly && styles.checkboxRowActive]}
-              >
-                <View style={styles.optionLeftRow}>
-                  <Ionicons color={theme.colors.primary} name="cube-outline" size={ms(16)} />
-                  <Typography variant="bodySemiBold">
-                    {t('shop.inStockOnly', 'In Stock Only')}
-                  </Typography>
-                </View>
-                {inStockOnly && (
-                  <Ionicons color={theme.colors.primary} name="checkmark" size={ms(18)} />
-                )}
-              </TouchableOpacity>
-
-              {/* Health Concerns */}
-              <Typography style={styles.sectionLabel} variant="label">
-                {t('shop.healthConcern', 'Health Concern')}
-              </Typography>
-              <View style={styles.rowWrap}>
-                {HEALTH_CONCERNS.map((concern) => (
-                  <Chip
-                    key={concern}
-                    label={concern}
-                    onPress={() =>
-                      setSelectedConcern(selectedConcern === concern ? undefined : concern)
-                    }
-                    selected={selectedConcern === concern}
-                  />
-                ))}
-              </View>
-
-              {/* Maximum Price */}
-              <Typography style={styles.sectionLabel} variant="label">
-                {t('shop.maximumPrice', 'Maximum Price')}
-              </Typography>
-              <View style={styles.rowWrap}>
-                {[500, 1000, 1500, 2500].map((price) => (
-                  <Chip
-                    key={price}
-                    label={`${t('common.under', 'Under')} ₹${price}`}
-                    onPress={() => setMaxPrice(maxPrice === price ? undefined : price)}
-                    selected={maxPrice === price}
-                  />
-                ))}
-              </View>
-
-              {/* Minimum Rating */}
-              <Typography style={styles.sectionLabel} variant="label">
-                {t('shop.minimumRating', 'Minimum Rating')}
-              </Typography>
-              <View style={styles.rowWrap}>
-                {[4.0, 4.5, 4.8].map((rating) => (
-                  <Chip
-                    key={rating}
-                    label={`★ ${rating}+`}
-                    onPress={() => setMinRating(minRating === rating ? undefined : rating)}
-                    selected={minRating === rating}
-                  />
-                ))}
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <Button
-                onPress={handleResetFilters}
-                style={styles.modalBtn}
-                title={t('common.reset', 'Reset')}
-                variant="secondary"
-              />
-              <Button
-                isLoading={isApplyingFilters}
-                onPress={handleApplyFilters}
-                style={styles.modalBtn}
-                title={t('common.apply', 'Apply Filters')}
-                variant="primary"
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+      />
     </ScreenWrapper>
   );
 }
@@ -509,60 +345,6 @@ const styles = StyleSheet.create((theme, rt) => ({
   wishlistBadgeText: {
     color: theme.colors.textInverse,
     fontSize: ms(9),
-    fontFamily: theme.fonts.bold,
-  },
-  filterBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: ms(16),
-    paddingVertical: ms(8),
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(4),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.colors.surfaceElevated,
-    marginRight: ms(8),
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  filterButtonActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.successLight,
-  },
-  filterButtonText: {
-    fontSize: ms(11),
-  },
-  sortScrollContent: {
-    gap: ms(6),
-    alignItems: 'center',
-  },
-  sortPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(4),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
-    borderRadius: ms(20),
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  sortPillActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  sortPillText: {
-    color: theme.colors.textSecondary,
-    fontSize: ms(11),
-  },
-  sortPillTextActive: {
-    color: theme.colors.textInverse,
     fontFamily: theme.fonts.bold,
   },
   listContent: {
@@ -607,65 +389,5 @@ const styles = StyleSheet.create((theme, rt) => ({
   floatingCartText: {
     color: theme.colors.textInverse,
     fontFamily: theme.fonts.bold,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: theme.colors.backdrop,
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: ms(24),
-    borderTopRightRadius: ms(24),
-    maxHeight: '80%',
-    padding: ms(20),
-    paddingBottom: Math.max(rt.insets.bottom, ms(20)),
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    paddingBottom: ms(12),
-  },
-  modalBody: {
-    paddingVertical: ms(12),
-  },
-  sectionLabel: {
-    marginTop: ms(14),
-    marginBottom: ms(8),
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: ms(12),
-    backgroundColor: theme.colors.surfaceElevated,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  checkboxRowActive: {
-    backgroundColor: theme.colors.successLight,
-    borderColor: theme.colors.primary,
-  },
-  optionLeftRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(8),
-  },
-  rowWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: ms(8),
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: ms(12),
-    marginTop: ms(16),
-  },
-  modalBtn: {
-    flex: 1,
   },
 }));

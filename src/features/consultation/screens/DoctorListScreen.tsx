@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   RefreshControl,
   ScrollView,
   TouchableOpacity,
@@ -14,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { NAVIGATION } from '@/navigation/constants';
 import { navigate } from '@/navigation/navigationRef';
-import { Button } from '@/shared/components/Button';
 import { Chip } from '@/shared/components/Chip';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
@@ -23,7 +21,8 @@ import { Typography } from '@/shared/components/Typography';
 import { useDebounce } from '@/shared/hooks';
 import { ms } from '@/shared/utils/scale';
 
-import { DOCTOR_CARD_HEIGHT, DoctorCard } from '../components/DoctorCard';
+import { DoctorCard } from '../components/DoctorCard';
+import { DoctorFilterModal } from '../components/DoctorFilterModal';
 import { useInfiniteDoctors } from '../hooks/useDoctors';
 import type { Doctor, Specialization } from '../types';
 
@@ -31,11 +30,11 @@ const SPECIALIZATIONS: { name: Specialization; icon: keyof typeof Ionicons.glyph
   { name: 'Panchakarma', icon: 'water-outline' },
   { name: 'Kayachikitsa', icon: 'fitness-outline' },
   { name: 'Nadi Pariksha', icon: 'pulse-outline' },
-  { name: 'Shalya Tantra', icon: 'cut-outline' },
+  { name: 'Shalya Tantra', icon: 'medkit-outline' },
   { name: 'Dravyaguna', icon: 'leaf-outline' },
-  { name: 'Prasuti & Stri Roga', icon: 'woman-outline' },
-  { name: 'Kaumarbhritya', icon: 'happy-outline' },
-  { name: 'Ayurvedic Dietetics', icon: 'nutrition-outline' },
+  { name: 'Prasuti & Stri Roga', icon: 'heart-outline' },
+  { name: 'Kaumarbhritya', icon: 'people-outline' },
+  { name: 'Ayurvedic Dietetics', icon: 'restaurant-outline' },
 ];
 
 export function DoctorListScreen(): React.JSX.Element {
@@ -54,7 +53,6 @@ export function DoctorListScreen(): React.JSX.Element {
   >('rating');
 
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
 
   const filters = useMemo(
     () => ({
@@ -97,26 +95,9 @@ export function DoctorListScreen(): React.JSX.Element {
     setAvailableToday(false);
   };
 
-  const handleApplyFilters = () => {
-    setIsApplyingFilters(true);
-    setTimeout(() => {
-      setIsApplyingFilters(false);
-      setFilterModalVisible(false);
-    }, 200);
-  };
-
   const renderItem = useCallback(
-    ({ item }: { item: Doctor }) => <DoctorCard doctor={item} onPress={handleDoctorPress} />,
+    ({ item }: { item: Doctor }) => <DoctorCard onPress={handleDoctorPress} doctor={item} />,
     [handleDoctorPress],
-  );
-
-  const getItemLayout = useCallback(
-    (_: any, index: number) => ({
-      length: DOCTOR_CARD_HEIGHT + ms(12),
-      offset: (DOCTOR_CARD_HEIGHT + ms(12)) * index,
-      index,
-    }),
-    [],
   );
 
   const renderFooter = () => {
@@ -133,20 +114,23 @@ export function DoctorListScreen(): React.JSX.Element {
 
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset>
-      {/* Unified Search Header */}
+      {/* Top Search & Controls Header */}
       <SearchHeader
         onQueryChange={setQuery}
-        placeholder={t('consultation.searchPlaceholder', 'Search by doctor, specialty, clinic...')}
+        placeholder={t(
+          'consultation.searchPlaceholder',
+          'Search doctors, specializations, clinics...',
+        )}
         query={query}
         subtitle={
           doctors.length > 0
-            ? `${doctors.length} ${t('consultation.specialistsAvailable', 'Specialists Available')}`
-            : t('consultation.title', 'Find an Ayurvedic Doctor')
+            ? `${doctors.length} ${t('consultation.doctorsAvailable', 'Specialists Available')}`
+            : t('consultation.findSpecialist', 'Find Expert Ayurvedic Practitioners')
         }
-        title={t('consultation.title', 'Find an Ayurvedic Doctor')}
+        title={t('consultation.title', 'Ayurvedic Consultations')}
       />
 
-      {/* Horizontally Scrolling Specialization Chips */}
+      {/* Horizontally Scrolling Specialization Filter Chips */}
       <View style={styles.chipsWrapper}>
         <ScrollView
           contentContainerStyle={styles.chipsScrollContent}
@@ -157,7 +141,7 @@ export function DoctorListScreen(): React.JSX.Element {
             icon={
               <Ionicons
                 color={!selectedSpec ? theme.colors.textInverse : theme.colors.textSecondary}
-                name="apps-outline"
+                name="medkit-outline"
                 size={ms(14)}
               />
             }
@@ -209,22 +193,10 @@ export function DoctorListScreen(): React.JSX.Element {
         >
           {(
             [
-              { label: t('common.rating', 'Highest Rated'), icon: 'star', val: 'rating' },
-              {
-                label: t('common.experience', 'Experience'),
-                icon: 'time-outline',
-                val: 'experience',
-              },
-              {
-                label: t('shop.priceLowToHigh', 'Fee: Low to High'),
-                icon: 'trending-up-outline',
-                val: 'fee_asc',
-              },
-              {
-                label: t('shop.priceHighToLow', 'Fee: High to Low'),
-                icon: 'trending-down-outline',
-                val: 'fee_desc',
-              },
+              { label: t('common.rating', 'Rating'), val: 'rating' },
+              { label: t('common.experience', 'Experience'), val: 'experience' },
+              { label: t('consultation.feeLowHigh', 'Fee: Low to High'), val: 'fee_asc' },
+              { label: t('consultation.feeHighLow', 'Fee: High to Low'), val: 'fee_desc' },
             ] as const
           ).map((s) => {
             const isSelected = sortBy === s.val;
@@ -234,11 +206,6 @@ export function DoctorListScreen(): React.JSX.Element {
                 onPress={() => setSortBy(isSelected ? undefined : s.val)}
                 style={[styles.sortPill, isSelected && styles.sortPillActive]}
               >
-                <Ionicons
-                  color={isSelected ? theme.colors.textInverse : theme.colors.textSecondary}
-                  name={s.icon as any}
-                  size={ms(12)}
-                />
                 <Typography
                   style={[styles.sortPillText, isSelected ? styles.sortPillTextActive : undefined]}
                   variant="caption"
@@ -251,12 +218,12 @@ export function DoctorListScreen(): React.JSX.Element {
         </ScrollView>
       </View>
 
-      {/* Doctor Virtualized List */}
+      {/* Doctor List */}
       {isLoading ? (
         <View style={styles.loaderWrap}>
           <ActivityIndicator color={theme.colors.primary} size="large" />
           <Typography style={styles.loaderText} variant="bodySmall">
-            {t('common.loading', 'Finding Ayurvedic Specialists...')}
+            {t('common.loading', 'Loading Ayurvedic specialists...')}
           </Typography>
         </View>
       ) : (
@@ -266,7 +233,6 @@ export function DoctorListScreen(): React.JSX.Element {
             { paddingBottom: Math.max(rt.insets.bottom, ms(20)) },
           ]}
           data={doctors}
-          getItemLayout={getItemLayout}
           initialNumToRender={10}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
@@ -316,117 +282,29 @@ export function DoctorListScreen(): React.JSX.Element {
           }
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
-          windowSize={5}
+          windowSize={7}
         />
       )}
 
-      {/* Advanced Filter Modal */}
-      <Modal
-        animationType="slide"
-        onRequestClose={() => setFilterModalVisible(false)}
-        transparent
+      {/* Extracted Filter Modal */}
+      <DoctorFilterModal
+        availableToday={availableToday}
+        maxFee={maxFee}
+        minExperience={minExp}
+        minRating={minRating}
+        onClose={() => setFilterModalVisible(false)}
+        onResetFilters={handleResetFilters}
+        onSelectExperience={setMinExp}
+        onSelectMaxFee={setMaxFee}
+        onSelectMinRating={setMinRating}
+        onToggleAvailableToday={setAvailableToday}
         visible={filterModalVisible}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Typography variant="h2">
-                {t('consultation.filterSpecialists', 'Filter Specialists')}
-              </Typography>
-              <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-                <Ionicons color={theme.colors.textSecondary} name="close" size={ms(22)} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalBody}>
-              {/* Availability Filter */}
-              <Typography style={styles.sectionLabel} variant="label">
-                {t('consultation.availability', 'Availability')}
-              </Typography>
-              <TouchableOpacity
-                onPress={() => setAvailableToday((v) => !v)}
-                style={[styles.checkboxRow, availableToday && styles.checkboxRowActive]}
-              >
-                <View style={styles.optionLeftRow}>
-                  <Ionicons color={theme.colors.primary} name="flash-outline" size={ms(16)} />
-                  <Typography variant="bodySemiBold">
-                    {t('common.today', 'Available Today')}
-                  </Typography>
-                </View>
-                {availableToday && (
-                  <Ionicons color={theme.colors.primary} name="checkmark" size={ms(18)} />
-                )}
-              </TouchableOpacity>
-
-              {/* Minimum Experience */}
-              <Typography style={styles.sectionLabel} variant="label">
-                {t('consultation.minimumExperience', 'Minimum Experience')}
-              </Typography>
-              <View style={styles.rowWrap}>
-                {[5, 10, 15, 20].map((exp) => (
-                  <Chip
-                    key={exp}
-                    label={`${exp}+ ${t('common.years', 'Years')}`}
-                    onPress={() => setMinExp(minExp === exp ? undefined : exp)}
-                    selected={minExp === exp}
-                  />
-                ))}
-              </View>
-
-              {/* Maximum Fee */}
-              <Typography style={styles.sectionLabel} variant="label">
-                {t('consultation.maximumFee', 'Maximum Fee')}
-              </Typography>
-              <View style={styles.rowWrap}>
-                {[500, 800, 1200, 2000].map((fee) => (
-                  <Chip
-                    key={fee}
-                    label={`${t('common.under', 'Under')} ₹${fee}`}
-                    onPress={() => setMaxFee(maxFee === fee ? undefined : fee)}
-                    selected={maxFee === fee}
-                  />
-                ))}
-              </View>
-
-              {/* Minimum Rating */}
-              <Typography style={styles.sectionLabel} variant="label">
-                {t('consultation.minimumRating', 'Minimum Rating')}
-              </Typography>
-              <View style={styles.rowWrap}>
-                {[4.0, 4.5, 4.8].map((rating) => (
-                  <Chip
-                    key={rating}
-                    label={`★ ${rating}+`}
-                    onPress={() => setMinRating(minRating === rating ? undefined : rating)}
-                    selected={minRating === rating}
-                  />
-                ))}
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <Button
-                onPress={handleResetFilters}
-                style={styles.modalBtn}
-                title={t('common.reset', 'Reset')}
-                variant="secondary"
-              />
-              <Button
-                isLoading={isApplyingFilters}
-                onPress={handleApplyFilters}
-                style={styles.modalBtn}
-                title={t('common.apply', 'Apply Filters')}
-                variant="primary"
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
+      />
     </ScreenWrapper>
   );
 }
 
-const styles = StyleSheet.create((theme, rt) => ({
+const styles = StyleSheet.create((theme) => ({
   chipsWrapper: {
     paddingVertical: ms(4),
   },
@@ -466,9 +344,6 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
   },
   sortPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(4),
     paddingHorizontal: ms(10),
     paddingVertical: ms(5),
     borderRadius: ms(20),
@@ -508,68 +383,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     justifyContent: 'center',
     paddingVertical: ms(16),
     gap: ms(8),
+    width: '100%',
   },
   footerText: {
     color: theme.colors.textSecondary,
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: theme.colors.backdrop,
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: ms(24),
-    borderTopRightRadius: ms(24),
-    maxHeight: '80%',
-    padding: ms(20),
-    paddingBottom: Math.max(rt.insets.bottom, ms(20)),
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    paddingBottom: ms(12),
-  },
-  modalBody: {
-    paddingVertical: ms(12),
-  },
-  sectionLabel: {
-    marginTop: ms(14),
-    marginBottom: ms(8),
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: ms(12),
-    backgroundColor: theme.colors.surfaceElevated,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  checkboxRowActive: {
-    backgroundColor: theme.colors.successLight,
-    borderColor: theme.colors.primary,
-  },
-  optionLeftRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(8),
-  },
-  rowWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: ms(8),
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    gap: ms(12),
-    marginTop: ms(16),
-  },
-  modalBtn: {
-    flex: 1,
   },
 }));
