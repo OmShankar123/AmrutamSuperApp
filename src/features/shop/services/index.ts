@@ -1,4 +1,5 @@
 import { apiClient } from '@/core/api/client';
+import { API_ENDPOINTS } from '@/core/api/endpoints';
 
 import type { Product, ProductFilterParams } from '../types';
 
@@ -12,7 +13,7 @@ export interface ProductsResponse {
 
 export const shopService = {
   getProducts: async (params: ProductFilterParams = {}): Promise<ProductsResponse> => {
-    const response = await apiClient.get<ProductsResponse>('/products', {
+    const response = await apiClient.get<ProductsResponse>(API_ENDPOINTS.PRODUCTS, {
       params: {
         page: params.page ?? 1,
         limit: params.limit ?? 50,
@@ -30,7 +31,7 @@ export const shopService = {
   },
 
   getProductDetail: async (id: string): Promise<Product> => {
-    const response = await apiClient.get<Product>(`/products/${id}`);
+    const response = await apiClient.get<Product>(API_ENDPOINTS.PRODUCT_DETAIL(id));
     return response.data;
   },
 };
