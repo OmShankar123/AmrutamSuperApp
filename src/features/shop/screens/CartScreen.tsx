@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, ScrollView, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { Image } from 'expo-image';
 
 import { useLanguage } from '@/core/localization/useLanguage';
@@ -14,12 +15,15 @@ import { Header } from '@/shared/components/Header';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
 import { Typography } from '@/shared/components/Typography';
 import { ms } from '@/shared/utils/scale';
+import { showSuccessToast } from '@/shared/utils/toast';
 
 import { useCartStore } from '../store/useCartStore';
 
 export function CartScreen(): React.JSX.Element {
   const { theme } = useUnistyles();
   const { t } = useLanguage();
+  const navigation = useNavigation();
+  const canGoBack = navigation.canGoBack();
 
   const items = useCartStore((s) => s.items);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
@@ -31,10 +35,19 @@ export function CartScreen(): React.JSX.Element {
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [clearCartModalVisible, setClearCartModalVisible] = useState(false);
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const handlePlaceOrder = () => {
-    setOrderPlaced(true);
-    clearCart();
+    setIsPlacingOrder(true);
+    setTimeout(() => {
+      setIsPlacingOrder(false);
+      setOrderPlaced(true);
+      clearCart();
+      showSuccessToast(
+        t('shop.orderPlacedSuccess', 'Order Placed Successfully!'),
+        t('shop.orderSuccessSub', 'Your Ayurvedic formulations are being handcrafted.'),
+      );
+    }, 600);
   };
 
   const clearAction =
@@ -53,13 +66,14 @@ export function CartScreen(): React.JSX.Element {
     <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
       <Header
         rightAction={clearAction}
-        showBack
+        showBack={canGoBack}
         subtitle={
           items.length > 0
             ? `${items.length} ${t('shop.formulationsAvailable', 'Formulations')}`
             : undefined
         }
         title={t('shop.cart', 'Shopping Bag')}
+        withTopInset
       />
 
       {items.length === 0 ? (
@@ -109,43 +123,48 @@ export function CartScreen(): React.JSX.Element {
                 contentFit="cover"
                 source={{ uri: product.imageUrl }}
                 style={styles.cartImage}
-                transition={200}
+                transition={100}
               />
               <View style={styles.cardContent}>
                 <View style={styles.headerRow}>
-                  <Typography
-                    numberOfLines={1}
-                    style={styles.productName}
-                    variant="bodySmallSemiBold"
-                  >
+                  <Typography numberOfLines={1} style={styles.productName} variant="bodySemiBold">
                     {product.name}
                   </Typography>
-                  <TouchableOpacity onPress={() => removeFromCart(product.id)}>
-                    <Ionicons color={theme.colors.error} name="trash-outline" size={ms(18)} />
+                  <TouchableOpacity
+                    accessibilityLabel={t('shop.removeFromCart', 'Remove from Cart')}
+                    onPress={() => removeFromCart(product.id)}
+                  >
+                    <Ionicons
+                      color={theme.colors.textTertiary}
+                      name="trash-outline"
+                      size={ms(18)}
+                    />
                   </TouchableOpacity>
                 </View>
 
                 <Typography style={styles.category} variant="caption">
-                  {product.category} • {product.size}
+                  {product.category}
                 </Typography>
 
                 <View style={styles.priceStepperRow}>
                   <Typography variant="price">₹{product.price * quantity}</Typography>
-
                   <View style={styles.stepper}>
                     <TouchableOpacity
+                      accessibilityLabel="Decrease Quantity"
                       onPress={() => updateQuantity(product.id, quantity - 1)}
                       style={styles.stepperBtn}
                     >
-                      <Ionicons color={theme.colors.text} name="remove" size={ms(14)} />
+                      <Ionicons
+                        color={quantity === 1 ? theme.colors.error : theme.colors.text}
+                        name={quantity === 1 ? 'trash-outline' : 'remove'}
+                        size={ms(14)}
+                      />
                     </TouchableOpacity>
-
                     <Typography style={styles.qtyText} variant="bodySmallSemiBold">
                       {quantity}
                     </Typography>
-
                     <TouchableOpacity
-                      disabled={quantity >= product.stockCount}
+                      accessibilityLabel="Increase Quantity"
                       onPress={() => updateQuantity(product.id, quantity + 1)}
                       style={styles.stepperBtn}
                     >
@@ -165,7 +184,8 @@ export function CartScreen(): React.JSX.Element {
 
             <View style={styles.summaryRow}>
               <Typography style={styles.summaryLabel} variant="bodySmall">
-                {t('shop.subtotal', 'Subtotal')}
+                {t('shop.subtotal', 'Bag Subtotal')} ({summary.itemCount} {t('shop.items', 'items')}
+                )
               </Typography>
               <Typography variant="bodySmallSemiBold">₹{summary.subtotal}</Typography>
             </View>
@@ -173,7 +193,7 @@ export function CartScreen(): React.JSX.Element {
             {summary.discount > 0 && (
               <View style={styles.summaryRow}>
                 <Typography style={styles.discountLabel} variant="bodySmall">
-                  {t('shop.ayushDiscountLabel', 'AYUSH Discount (10%)')}
+                  {t('shop.ayushDiscount', 'AYUSH Discount (10%)')}
                 </Typography>
                 <Typography style={styles.discountValue} variant="bodySmallSemiBold">
                   -₹{summary.discount}
@@ -183,37 +203,43 @@ export function CartScreen(): React.JSX.Element {
 
             <View style={styles.summaryRow}>
               <Typography style={styles.summaryLabel} variant="bodySmall">
-                {t('shop.deliveryFee', 'Delivery Charges')}
+                {t('shop.deliveryFee', 'Standard Delivery')}
               </Typography>
-              <Typography variant="bodySmallSemiBold">
-                {summary.deliveryFee === 0 ? 'FREE' : `₹${summary.deliveryFee}`}
+              <Typography
+                color={summary.deliveryFee === 0 ? theme.colors.success : theme.colors.text}
+                variant="bodySmallSemiBold"
+              >
+                {summary.deliveryFee === 0 ? t('common.free', 'FREE') : `₹${summary.deliveryFee}`}
               </Typography>
             </View>
 
             <View style={[styles.summaryRow, styles.totalRow]}>
-              <Typography variant="h2">{t('shop.total', 'Total Amount')}</Typography>
+              <Typography variant="h3">{t('shop.totalAmount', 'Total Amount')}</Typography>
               <Typography variant="price">₹{summary.total}</Typography>
             </View>
-          </View>
 
-          {/* Checkout CTA */}
-          <Button
-            leftIcon={
-              <Ionicons color={theme.colors.textInverse} name="lock-closed-outline" size={ms(18)} />
-            }
-            onPress={() => setCheckoutModalVisible(true)}
-            style={styles.checkoutBtn}
-            title={`${t('shop.proceedToCheckout', 'Proceed to Checkout')} • ₹${summary.total}`}
-            variant="primary"
-          />
+            <Button
+              leftIcon={
+                <Ionicons color={theme.colors.textInverse} name="lock-closed" size={ms(16)} />
+              }
+              onPress={() => setCheckoutModalVisible(true)}
+              style={styles.checkoutBtn}
+              title={t('shop.proceedToCheckout', 'Proceed to Secure Checkout')}
+              variant="primary"
+            />
+          </View>
         </ScrollView>
       )}
 
-      {/* Confirmation Modal for Clearing Cart */}
+      {/* Confirmation Modal to Clear Cart */}
       <ConfirmationModal
-        confirmTitle={t('common.clear', 'Clear All')}
+        cancelTitle={t('common.cancel', 'Cancel')}
+        confirmTitle={t('shop.clearCart', 'Clear Cart')}
         confirmVariant="danger"
-        description={t('shop.emptyCartSub', 'Remove all items from your bag?')}
+        description={t(
+          'shop.clearCartConfirmDesc',
+          'Are you sure you want to remove all formulations from your bag?',
+        )}
         iconName="trash-outline"
         onCancel={() => setClearCartModalVisible(false)}
         onConfirm={() => {
@@ -276,6 +302,7 @@ export function CartScreen(): React.JSX.Element {
                 </View>
 
                 <Button
+                  isLoading={isPlacingOrder}
                   leftIcon={
                     <Ionicons
                       color={theme.colors.textInverse}
