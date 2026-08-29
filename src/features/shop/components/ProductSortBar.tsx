@@ -1,5 +1,5 @@
-import React, { type FC } from 'react';
-import { ScrollView, TouchableOpacity, View } from 'react-native';
+import React, { type FC, useRef } from 'react';
+import { FlatList, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -25,22 +25,44 @@ export const ProductSortBar: FC<ProductSortBarProps> = ({
 }) => {
   const { theme } = useUnistyles();
   const { t } = useLanguage();
+  const sortListRef = useRef<FlatList>(null);
 
   const sortOptions = [
-    { label: t('shop.popular', 'Popular'), icon: 'flame-outline', val: 'popularity' as const },
-    { label: t('shop.highestRated', 'Highest Rated'), icon: 'star', val: 'rating' as const },
+    {
+      label: t('shop.popular', 'Popular'),
+      icon: 'flame-outline' as const,
+      val: 'popularity' as const,
+    },
+    {
+      label: t('shop.highestRated', 'Highest Rated'),
+      icon: 'star' as const,
+      val: 'rating' as const,
+    },
     {
       label: t('shop.priceLowToHigh', 'Price: Low to High'),
-      icon: 'trending-up-outline',
+      icon: 'trending-up-outline' as const,
       val: 'price_asc' as const,
     },
     {
       label: t('shop.priceHighToLow', 'Price: High to Low'),
-      icon: 'trending-down-outline',
+      icon: 'trending-down-outline' as const,
       val: 'price_desc' as const,
     },
-    { label: t('shop.discount', 'Discount'), icon: 'pricetag-outline', val: 'discount' as const },
+    {
+      label: t('shop.discount', 'Discount'),
+      icon: 'pricetag-outline' as const,
+      val: 'discount' as const,
+    },
   ];
+
+  const handleSelectSort = (val: ProductSortOption, index: number) => {
+    onSortChange(sortBy === val ? undefined : val);
+    sortListRef.current?.scrollToIndex({
+      index,
+      viewPosition: 0.5,
+      animated: true,
+    });
+  };
 
   return (
     <View style={styles.filterBar}>
@@ -58,34 +80,45 @@ export const ProductSortBar: FC<ProductSortBarProps> = ({
         </Typography>
       </TouchableOpacity>
 
-      <ScrollView
+      <FlatList
         contentContainerStyle={styles.sortScrollContent}
+        data={sortOptions}
         horizontal
-        showsHorizontalScrollIndicator={false}
-      >
-        {sortOptions.map((s) => {
-          const isSelected = sortBy === s.val;
+        keyExtractor={(item) => item.val}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            sortListRef.current?.scrollToIndex({
+              index: info.index,
+              viewPosition: 0.5,
+              animated: true,
+            });
+          }, 100);
+        }}
+        ref={sortListRef}
+        renderItem={({ item, index }) => {
+          const isSelected = sortBy === item.val;
           return (
             <TouchableOpacity
-              key={s.val}
-              onPress={() => onSortChange(isSelected ? undefined : s.val)}
+              onPress={() => handleSelectSort(item.val, index)}
               style={[styles.sortPill, isSelected && styles.sortPillActive]}
             >
               <Ionicons
                 color={isSelected ? theme.colors.textInverse : theme.colors.textSecondary}
-                name={s.icon as any}
+                name={item.icon}
                 size={ms(12)}
               />
               <Typography
                 style={[styles.sortPillText, isSelected ? styles.sortPillTextActive : undefined]}
                 variant="caption"
               >
-                {s.label}
+                {item.label}
               </Typography>
             </TouchableOpacity>
           );
-        })}
-      </ScrollView>
+        }}
+        showsHorizontalScrollIndicator={false}
+        style={styles.sortList}
+      />
     </View>
   );
 };
@@ -94,7 +127,7 @@ const styles = StyleSheet.create((theme) => ({
   filterBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: ms(16),
+    paddingLeft: ms(16),
     paddingVertical: ms(8),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
@@ -118,9 +151,13 @@ const styles = StyleSheet.create((theme) => ({
   filterButtonText: {
     fontSize: ms(11),
   },
+  sortList: {
+    flex: 1,
+  },
   sortScrollContent: {
     gap: ms(6),
     alignItems: 'center',
+    paddingRight: ms(16),
   },
   sortPill: {
     flexDirection: 'row',

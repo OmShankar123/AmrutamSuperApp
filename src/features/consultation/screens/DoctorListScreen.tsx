@@ -1,12 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  ScrollView,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -41,6 +34,7 @@ export function DoctorListScreen(): React.JSX.Element {
   const { theme, rt } = useUnistyles();
   const { t } = useLanguage();
   const chipsListRef = useRef<FlatList>(null);
+  const sortListRef = useRef<FlatList>(null);
 
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebounce(query, 350);
@@ -99,6 +93,28 @@ export function DoctorListScreen(): React.JSX.Element {
   const handleSelectChip = (spec: Specialization | undefined, index: number) => {
     setSelectedSpec(spec);
     chipsListRef.current?.scrollToIndex({
+      index,
+      viewPosition: 0.5,
+      animated: true,
+    });
+  };
+
+  const sortOptions = useMemo(
+    () => [
+      { label: t('common.rating', 'Rating'), val: 'rating' as const },
+      { label: t('common.experience', 'Experience'), val: 'experience' as const },
+      { label: t('consultation.feeLowHigh', 'Fee: Low to High'), val: 'fee_asc' as const },
+      { label: t('consultation.feeHighLow', 'Fee: High to Low'), val: 'fee_desc' as const },
+    ],
+    [t],
+  );
+
+  const handleSelectSort = (
+    val: 'rating' | 'experience' | 'fee_asc' | 'fee_desc',
+    index: number,
+  ) => {
+    setSortBy(sortBy === val ? undefined : val);
+    sortListRef.current?.scrollToIndex({
       index,
       viewPosition: 0.5,
       animated: true,
@@ -194,7 +210,7 @@ export function DoctorListScreen(): React.JSX.Element {
         />
       </View>
 
-      {/* Filter & Sort Bar */}
+      {/* Filter & Auto-Centering Sort Bar */}
       <View style={styles.filterBar}>
         <TouchableOpacity
           onPress={() => setFilterModalVisible(true)}
@@ -210,36 +226,40 @@ export function DoctorListScreen(): React.JSX.Element {
           </Typography>
         </TouchableOpacity>
 
-        <ScrollView
+        <FlatList
           contentContainerStyle={styles.sortScrollContent}
+          data={sortOptions}
           horizontal
-          showsHorizontalScrollIndicator={false}
-        >
-          {(
-            [
-              { label: t('common.rating', 'Rating'), val: 'rating' },
-              { label: t('common.experience', 'Experience'), val: 'experience' },
-              { label: t('consultation.feeLowHigh', 'Fee: Low to High'), val: 'fee_asc' },
-              { label: t('consultation.feeHighLow', 'Fee: High to Low'), val: 'fee_desc' },
-            ] as const
-          ).map((s) => {
-            const isSelected = sortBy === s.val;
+          keyExtractor={(item) => item.val}
+          onScrollToIndexFailed={(info) => {
+            setTimeout(() => {
+              sortListRef.current?.scrollToIndex({
+                index: info.index,
+                viewPosition: 0.5,
+                animated: true,
+              });
+            }, 100);
+          }}
+          ref={sortListRef}
+          renderItem={({ item, index }) => {
+            const isSelected = sortBy === item.val;
             return (
               <TouchableOpacity
-                key={s.val}
-                onPress={() => setSortBy(isSelected ? undefined : s.val)}
+                onPress={() => handleSelectSort(item.val, index)}
                 style={[styles.sortPill, isSelected && styles.sortPillActive]}
               >
                 <Typography
                   style={[styles.sortPillText, isSelected ? styles.sortPillTextActive : undefined]}
                   variant="caption"
                 >
-                  {s.label}
+                  {item.label}
                 </Typography>
               </TouchableOpacity>
             );
-          })}
-        </ScrollView>
+          }}
+          showsHorizontalScrollIndicator={false}
+          style={styles.sortList}
+        />
       </View>
 
       {/* Doctor List */}
@@ -339,7 +359,7 @@ const styles = StyleSheet.create((theme) => ({
   filterBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: ms(16),
+    paddingLeft: ms(16),
     paddingVertical: ms(8),
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
@@ -363,9 +383,13 @@ const styles = StyleSheet.create((theme) => ({
   filterButtonText: {
     fontSize: ms(11),
   },
+  sortList: {
+    flex: 1,
+  },
   sortScrollContent: {
     gap: ms(6),
     alignItems: 'center',
+    paddingRight: ms(16),
   },
   sortPill: {
     paddingHorizontal: ms(10),
