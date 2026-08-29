@@ -1,6 +1,7 @@
 import type { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import axios from 'axios';
 
+import Env from '@env';
 import { logger } from '@/core/logger';
 
 import {
@@ -11,7 +12,7 @@ import {
 import { handleMockRoute } from './services/mockRouter';
 
 export const apiClient = axios.create({
-  baseURL: 'http://localhost/mock-api/v1',
+  baseURL: Env.EXPO_PUBLIC_API_URL,
   timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
   adapter: async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
