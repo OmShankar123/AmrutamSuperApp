@@ -17,8 +17,9 @@ import { Header } from '@/shared/components/Header';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
 import { Typography } from '@/shared/components/Typography';
+import { generateAndDownloadReportPdf } from '@/shared/utils/pdfGenerator';
 import { ms } from '@/shared/utils/scale';
-import { showSuccessToast } from '@/shared/utils/toast';
+import { showErrorToast, showSuccessToast } from '@/shared/utils/toast';
 
 import { useHealthRecordDetail } from '../hooks/useHealthRecords';
 import type { RecordAttachment } from '../types';
@@ -38,15 +39,20 @@ export function RecordDetailScreen(): React.JSX.Element {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isRefilling, setIsRefilling] = useState(false);
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
+    if (!record) return;
     setIsDownloading(true);
-    setTimeout(() => {
-      setIsDownloading(false);
+    try {
+      await generateAndDownloadReportPdf(record);
       showSuccessToast(
         t('healthRecords.downloadSuccess', 'Medical report downloaded to your device storage.'),
         t('healthRecords.downloadPdf', 'Download PDF Report'),
       );
-    }, 600);
+    } catch (err: any) {
+      showErrorToast(err?.message || 'Could not generate report PDF', 'Download Error');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   const handleRefillPrescription = () => {
