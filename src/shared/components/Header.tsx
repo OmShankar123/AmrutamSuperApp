@@ -90,7 +90,7 @@ export const Header: FC<HeaderProps> = ({
           ) : null}
         </View>
 
-        {/* Right Action */}
+        {/* Right Action (Expands cleanly with zero wrapping) */}
         <View style={styles.right}>{rightAction || <View style={styles.placeholder} />}</View>
       </View>
     </View>
@@ -118,7 +118,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingHorizontal: ms(16),
   },
   left: {
-    width: ms(40),
+    minWidth: ms(40),
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
@@ -129,7 +129,7 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingHorizontal: ms(8),
   },
   right: {
-    width: ms(40),
+    minWidth: ms(40),
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
