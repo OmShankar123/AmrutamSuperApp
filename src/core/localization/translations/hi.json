@@ -194,6 +194,14 @@
     "resetComplete": "रीसेट पूर्ण",
     "offlineEnabled": "सिम्युलेटेड ऑफ़लाइन मोड सक्षम",
     "onlineRestored": "सिम्युलेटेड ऑनलाइन मोड पुनर्स्थापित",
-    "networkStateChanged": "नेटवर्क स्थिति बदली गई"
+    "networkStateChanged": "नेटवर्क स्थिति बदली गई",
+    "presetFast": "0ms (तेज़)",
+    "presetNormal": "350ms (सामान्य)",
+    "presetSlow": "1000ms (3G धीमा)",
+    "presetFlaky": "2500ms (2G अत्यधिक धीमा)",
+    "rateStable": "0% (स्थिर)",
+    "rateOccasional": "10% (कभी-कभी)",
+    "rateUnstable": "25% (अस्थिर)",
+    "rateHigh": "50% (उच्च विफलता)"
   }
 }

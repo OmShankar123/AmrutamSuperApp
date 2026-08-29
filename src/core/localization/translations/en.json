@@ -194,6 +194,14 @@
     "resetComplete": "Reset Complete",
     "offlineEnabled": "Simulated offline mode enabled",
     "onlineRestored": "Simulated online mode restored",
-    "networkStateChanged": "Network State Changed"
+    "networkStateChanged": "Network State Changed",
+    "presetFast": "0ms (Fast)",
+    "presetNormal": "350ms (Normal)",
+    "presetSlow": "1000ms (3G Slow)",
+    "presetFlaky": "2500ms (2G Flaky)",
+    "rateStable": "0% (Stable)",
+    "rateOccasional": "10% (Occasional)",
+    "rateUnstable": "25% (Unstable)",
+    "rateHigh": "50% (High Failure)"
   }
 }

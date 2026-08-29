@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ScrollView, Switch, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,26 +16,32 @@ import { Typography } from '@/shared/components/Typography';
 import { ms } from '@/shared/utils/scale';
 import { showSuccessToast } from '@/shared/utils/toast';
 
-const LATENCY_PRESETS = [
-  { label: '0ms (Fast)', val: 0 },
-  { label: '350ms (Normal)', val: 350 },
-  { label: '1000ms (3G Slow)', val: 1000 },
-  { label: '2500ms (2G Flaky)', val: 2500 },
-];
-
-const ERROR_RATE_PRESETS = [
-  { label: '0% (Stable)', val: 0 },
-  { label: '10% (Occasional)', val: 0.1 },
-  { label: '25% (Unstable)', val: 0.25 },
-  { label: '50% (High Failure)', val: 0.5 },
-];
-
 export function DevPanelScreen(): React.JSX.Element {
   const { theme } = useUnistyles();
   const { t } = useLanguage();
   const [chaos, setChaosState] = useState<ChaosConfig>(() => getChaosConfig());
   const isConnected = useNetworkStore((s) => s.isConnected);
   const setNetworkState = useNetworkStore((s) => s.setNetworkState);
+
+  const latencyPresets = useMemo(
+    () => [
+      { label: t('dev.presetFast', '0ms (Fast)'), val: 0 },
+      { label: t('dev.presetNormal', '350ms (Normal)'), val: 350 },
+      { label: t('dev.presetSlow', '1000ms (3G Slow)'), val: 1000 },
+      { label: t('dev.presetFlaky', '2500ms (2G Flaky)'), val: 2500 },
+    ],
+    [t],
+  );
+
+  const errorRatePresets = useMemo(
+    () => [
+      { label: t('dev.rateStable', '0% (Stable)'), val: 0 },
+      { label: t('dev.rateOccasional', '10% (Occasional)'), val: 0.1 },
+      { label: t('dev.rateUnstable', '25% (Unstable)'), val: 0.25 },
+      { label: t('dev.rateHigh', '50% (High Failure)'), val: 0.5 },
+    ],
+    [t],
+  );
 
   const updateChaos = (partial: Partial<ChaosConfig>) => {
     setChaosConfig(partial);
@@ -102,7 +108,7 @@ export function DevPanelScreen(): React.JSX.Element {
           </Typography>
 
           <View style={styles.presetGrid}>
-            {LATENCY_PRESETS.map((preset) => {
+            {latencyPresets.map((preset) => {
               const isSelected = chaos.delayMs === preset.val;
               return (
                 <TouchableOpacity
@@ -137,7 +143,7 @@ export function DevPanelScreen(): React.JSX.Element {
           </Typography>
 
           <View style={styles.presetGrid}>
-            {ERROR_RATE_PRESETS.map((preset) => {
+            {errorRatePresets.map((preset) => {
               const isSelected = chaos.errorRate === preset.val;
               return (
                 <TouchableOpacity
