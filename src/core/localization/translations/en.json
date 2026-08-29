@@ -21,7 +21,9 @@
     "reviews": "Reviews",
     "back": "Back",
     "clear": "Clear All",
-    "under": "Under"
+    "under": "Under",
+    "errorTitle": "Unable to Load Data",
+    "errorSub": "An error occurred while communicating with the server. Please check your connection and retry."
   },
   "navigation": {
     "tabDoctors": "Doctors",

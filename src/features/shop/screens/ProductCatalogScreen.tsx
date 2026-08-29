@@ -96,8 +96,16 @@ export function ProductCatalogScreen(): React.JSX.Element {
     ],
   );
 
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } =
-    useInfiniteProducts(filters);
+  const {
+    data,
+    isLoading,
+    isError,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+    isRefetching,
+  } = useInfiniteProducts(filters);
 
   const products = useMemo(() => {
     return data?.pages.flatMap((page) => page.data) ?? [];
@@ -299,17 +307,30 @@ export function ProductCatalogScreen(): React.JSX.Element {
           initialNumToRender={10}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
-            <EmptyState
-              actionTitle={t('common.reset', 'Reset Filters')}
-              description={t('shop.noResultsSub', 'Try adjusting your filters or search terms.')}
-              iconName="leaf-outline"
-              onAction={() => {
-                setQuery('');
-                setSelectedCategory(undefined);
-                handleResetFilters();
-              }}
-              title={t('common.noResults', 'No Formulations Found')}
-            />
+            isError && products.length === 0 ? (
+              <EmptyState
+                actionTitle={t('common.retry', 'Retry')}
+                description={t(
+                  'common.errorSub',
+                  'An error occurred while communicating with the server. Please check your connection and retry.',
+                )}
+                iconName="alert-circle-outline"
+                onAction={() => refetch()}
+                title={t('common.errorTitle', 'Unable to Load Data')}
+              />
+            ) : (
+              <EmptyState
+                actionTitle={t('common.reset', 'Reset Filters')}
+                description={t('shop.noResultsSub', 'Try adjusting your filters or search terms.')}
+                iconName="leaf-outline"
+                onAction={() => {
+                  setQuery('');
+                  setSelectedCategory(undefined);
+                  handleResetFilters();
+                }}
+                title={t('common.noResults', 'No Formulations Found')}
+              />
+            )
           }
           ListFooterComponent={renderFooter}
           maxToRenderPerBatch={10}

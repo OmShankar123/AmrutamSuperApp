@@ -69,8 +69,16 @@ export function DoctorListScreen(): React.JSX.Element {
     [debouncedQuery, selectedSpec, minExp, maxFee, minRating, availableToday, sortBy],
   );
 
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } =
-    useInfiniteDoctors(filters);
+  const {
+    data,
+    isLoading,
+    isError,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+    isRefetching,
+  } = useInfiniteDoctors(filters);
 
   const doctors = useMemo(() => {
     return data?.pages.flatMap((page) => page.data) ?? [];
@@ -262,20 +270,33 @@ export function DoctorListScreen(): React.JSX.Element {
           initialNumToRender={10}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
-            <EmptyState
-              actionTitle={t('common.reset', 'Reset Filters')}
-              description={t(
-                'consultation.noResultsSub',
-                'Try adjusting your search query or removing active filters.',
-              )}
-              iconName="search-outline"
-              onAction={() => {
-                setQuery('');
-                setSelectedSpec(undefined);
-                handleResetFilters();
-              }}
-              title={t('common.noResults', 'No Doctors Found')}
-            />
+            isError && doctors.length === 0 ? (
+              <EmptyState
+                actionTitle={t('common.retry', 'Retry')}
+                description={t(
+                  'common.errorSub',
+                  'An error occurred while communicating with the server. Please check your connection and retry.',
+                )}
+                iconName="alert-circle-outline"
+                onAction={() => refetch()}
+                title={t('common.errorTitle', 'Unable to Load Data')}
+              />
+            ) : (
+              <EmptyState
+                actionTitle={t('common.reset', 'Reset Filters')}
+                description={t(
+                  'consultation.noResultsSub',
+                  'Try adjusting your search query or removing active filters.',
+                )}
+                iconName="search-outline"
+                onAction={() => {
+                  setQuery('');
+                  setSelectedSpec(undefined);
+                  handleResetFilters();
+                }}
+                title={t('common.noResults', 'No Doctors Found')}
+              />
+            )
           }
           ListFooterComponent={renderFooter}
           maxToRenderPerBatch={15}

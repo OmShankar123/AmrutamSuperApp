@@ -77,11 +77,19 @@ export function TimelineScreen(): React.JSX.Element {
   const debouncedQuery = useDebounce(query, 350);
   const [selectedType, setSelectedType] = useState<RecordType | undefined>(undefined);
 
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch, isRefetching } =
-    useInfiniteHealthRecords({
-      query: debouncedQuery || undefined,
-      type: selectedType,
-    });
+  const {
+    data,
+    isLoading,
+    isError,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+    isRefetching,
+  } = useInfiniteHealthRecords({
+    query: debouncedQuery || undefined,
+    type: selectedType,
+  });
 
   const records = useMemo(() => {
     return data?.pages.flatMap((page) => page.data) ?? [];
@@ -273,19 +281,32 @@ export function TimelineScreen(): React.JSX.Element {
           initialNumToRender={15}
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
-            <EmptyState
-              actionTitle={t('common.reset', 'Reset Filters')}
-              description={t(
-                'healthRecords.noRecordsSub',
-                'Your medical history, prescriptions, and lab tests will appear here chronologically.',
-              )}
-              iconName="document-text-outline"
-              onAction={() => {
-                setQuery('');
-                setSelectedType(undefined);
-              }}
-              title={t('healthRecords.noRecords', 'No Health Records Found')}
-            />
+            isError && records.length === 0 ? (
+              <EmptyState
+                actionTitle={t('common.retry', 'Retry')}
+                description={t(
+                  'common.errorSub',
+                  'An error occurred while communicating with the server. Please check your connection and retry.',
+                )}
+                iconName="alert-circle-outline"
+                onAction={() => refetch()}
+                title={t('common.errorTitle', 'Unable to Load Data')}
+              />
+            ) : (
+              <EmptyState
+                actionTitle={t('common.reset', 'Reset Filters')}
+                description={t(
+                  'healthRecords.noRecordsSub',
+                  'Your medical history, prescriptions, and lab tests will appear here chronologically.',
+                )}
+                iconName="document-text-outline"
+                onAction={() => {
+                  setQuery('');
+                  setSelectedType(undefined);
+                }}
+                title={t('healthRecords.noRecords', 'No Health Records Found')}
+              />
+            )
           }
           ListFooterComponent={renderFooter}
           maxToRenderPerBatch={20}
