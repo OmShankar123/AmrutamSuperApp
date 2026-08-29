@@ -116,7 +116,7 @@
     "howToUse": "How to Use & Dosage",
     "orderSummary": "Order Summary",
     "subtotal": "Subtotal",
-    "discount": "AYUSH Discount",
+    "discount": "AYUSH Discount ({{percent}}%)",
     "deliveryFee": "Delivery Charges",
     "total": "Total Amount",
     "proceedToCheckout": "Proceed to Checkout",
@@ -152,13 +152,14 @@
     "clearCart": "Clear Cart",
     "off": "OFF",
     "bestseller": "Bestseller",
-    "addMoreForDiscount": "Add ₹{{amount}} more to get 10% AYUSH Discount!",
-    "discountApplied": "🎉 10% AYUSH Ministry Discount Applied!",
-    "ayushDiscountLabel": "AYUSH Discount (10%)",
+    "addMoreForDiscount": "Add ₹{{amount}} more to get {{percent}}% AYUSH Discount!",
+    "discountApplied": "🎉 {{percent}}% AYUSH Ministry Discount Applied!",
+    "ayushDiscountLabel": "AYUSH Discount ({{percent}}%)",
     "mockAddress": "Sector 62, Noida, UP (Home)",
     "mockPaymentMethod": "UPI / NetBanking / COD",
     "units": "Units",
-    "noResultsSub": "Try adjusting your filters or search terms."
+    "noResultsSub": "Try adjusting your filters or search terms.",
+    "ayushDiscount": "AYUSH Discount ({{percent}}%)"
   },
   "healthRecords": {
     "title": "Patient Health Timeline",

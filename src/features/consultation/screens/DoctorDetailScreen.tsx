@@ -152,11 +152,9 @@ export function DoctorDetailScreen(): React.JSX.Element {
           <View style={styles.clinicCard}>
             <Typography variant="bodySemiBold">{doctor.clinicName}</Typography>
             <Typography style={styles.clinicAddress} variant="bodySmall">
-              {t(
-                'consultation.clinicAddress',
-                'Ayurvedic Wellness Ayurvedic Wellness & Consultation Wing, {doctor.city} Consultation Wing, {{city}}',
-                { city: doctor.city },
-              )}
+              {t('consultation.clinicAddress', 'Ayurvedic Wellness & Consultation Wing, {{city}}', {
+                city: doctor.city,
+              })}
             </Typography>
             <View style={styles.timeRow}>
               <Ionicons color={theme.colors.primary} name="time-outline" size={ms(14)} />

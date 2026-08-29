@@ -116,7 +116,7 @@
     "howToUse": "उपयोग विधि एवं मात्रा",
     "orderSummary": "ऑर्डर का विवरण",
     "subtotal": "उप-कुल",
-    "discount": "आयुष छूट",
+    "discount": "आयुष छूट ({{percent}}%)",
     "deliveryFee": "डिलीवरी शुल्क",
     "total": "कुल राशि",
     "proceedToCheckout": "चेकआउट करें",
@@ -152,13 +152,14 @@
     "clearCart": "कार्ट खाली करें",
     "off": "छूट",
     "bestseller": "बेस्टसेलर",
-    "addMoreForDiscount": "10% आयुष छूट पाने के लिए ₹{{amount}} और जोड़ें!",
-    "discountApplied": "🎉 10% आयुष मंत्रालय छूट लागू!",
-    "ayushDiscountLabel": "आयुष छूट (10%)",
+    "addMoreForDiscount": "{{percent}}% आयुष छूट पाने के लिए ₹{{amount}} और जोड़ें!",
+    "discountApplied": "🎉 {{percent}}% आयुष मंत्रालय छूट लागू!",
+    "ayushDiscountLabel": "आयुष छूट ({{percent}}%)",
     "mockAddress": "सेक्टर 62, नोएडा, यूपी (घर)",
     "mockPaymentMethod": "यूपीआई / नेटबैंकिंग / सीओडी",
     "units": "इकाइयां",
-    "noResultsSub": "अपने फ़िल्टर या खोज शब्द बदलें।"
+    "noResultsSub": "अपने फ़िल्टर या खोज शब्द बदलें।",
+    "ayushDiscount": "आयुष छूट ({{percent}}%)"
   },
   "healthRecords": {
     "title": "स्वास्थ्य समयरेखा",

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+import { useFeatureFlags } from '@/core/config/featureFlags';
 import { mmkvAdapter } from '@/core/storage';
 
 import type { CartItem, CartSummary, Product } from '../types';
@@ -76,11 +77,17 @@ export const useCartStore = create<CartState>()(
         const items = get().items;
         const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
-        // Ayush 10% discount on orders above ₹1000
-        const discount = subtotal >= 1000 ? Math.round(subtotal * 0.1) : 0;
+        // Remote Config: Dynamic discount rate & feature toggle
+        const { enableAyushDiscount, discountPercentage, freeDeliveryThreshold } =
+          useFeatureFlags.getState().flags;
 
-        // Free delivery on orders above ₹500
-        const deliveryFee = subtotal === 0 || subtotal >= 500 ? 0 : 50;
+        const discount =
+          enableAyushDiscount && subtotal >= 1000
+            ? Math.round(subtotal * (discountPercentage / 100))
+            : 0;
+
+        // Remote Config: Dynamic free delivery threshold
+        const deliveryFee = subtotal === 0 || subtotal >= freeDeliveryThreshold ? 0 : 50;
 
         const total = subtotal - discount + deliveryFee;
         const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);

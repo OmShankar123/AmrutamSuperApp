@@ -3,6 +3,7 @@ import { FlatList, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useFeatureFlags } from '@/core/config/featureFlags';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { Typography } from '@/shared/components/Typography';
 import { ms } from '@/shared/utils/scale';
@@ -27,17 +28,23 @@ export const ProductSortBar: FC<ProductSortBarProps> = ({
   const { t } = useLanguage();
   const sortListRef = useRef<FlatList>(null);
 
+  const enableRatingSort = useFeatureFlags((s) => s.flags.enableDoctorRatingSort);
+
   const sortOptions = [
     {
       label: t('shop.popular', 'Popular'),
       icon: 'flame-outline' as const,
       val: 'popularity' as const,
     },
-    {
-      label: t('shop.highestRated', 'Highest Rated'),
-      icon: 'star' as const,
-      val: 'rating' as const,
-    },
+    ...(enableRatingSort
+      ? [
+          {
+            label: t('shop.highestRated', 'Highest Rated'),
+            icon: 'star' as const,
+            val: 'rating' as const,
+          },
+        ]
+      : []),
     {
       label: t('shop.priceLowToHigh', 'Price: Low to High'),
       icon: 'trending-up-outline' as const,

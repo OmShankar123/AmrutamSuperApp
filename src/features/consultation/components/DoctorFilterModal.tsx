@@ -3,6 +3,7 @@ import { Modal, ScrollView, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useFeatureFlags } from '@/core/config/featureFlags';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { Button } from '@/shared/components/Button';
 import { Chip } from '@/shared/components/Chip';
@@ -39,6 +40,7 @@ export const DoctorFilterModal: FC<DoctorFilterModalProps> = ({
   const { theme } = useUnistyles();
   const { t } = useLanguage();
   const [isApplying, setIsApplying] = useState(false);
+  const enableDoctorRatingSort = useFeatureFlags((s) => s.flags.enableDoctorRatingSort);
 
   const handleApply = () => {
     setIsApplying(true);
@@ -109,20 +111,24 @@ export const DoctorFilterModal: FC<DoctorFilterModalProps> = ({
               ))}
             </View>
 
-            {/* Minimum Rating */}
-            <Typography style={styles.sectionLabel} variant="label">
-              {t('common.rating', 'Minimum Rating')}
-            </Typography>
-            <View style={styles.rowWrap}>
-              {[4.0, 4.5, 4.8].map((rating) => (
-                <Chip
-                  key={rating}
-                  label={`★ ${rating}+`}
-                  onPress={() => onSelectMinRating(minRating === rating ? undefined : rating)}
-                  selected={minRating === rating}
-                />
-              ))}
-            </View>
+            {/* Minimum Rating (Feature Flag Controlled) */}
+            {enableDoctorRatingSort && (
+              <>
+                <Typography style={styles.sectionLabel} variant="label">
+                  {t('common.rating', 'Minimum Rating')}
+                </Typography>
+                <View style={styles.rowWrap}>
+                  {[4.0, 4.5, 4.8].map((rating) => (
+                    <Chip
+                      key={rating}
+                      label={`★ ${rating}+`}
+                      onPress={() => onSelectMinRating(minRating === rating ? undefined : rating)}
+                      selected={minRating === rating}
+                    />
+                  ))}
+                </View>
+              </>
+            )}
           </ScrollView>
 
           <View style={styles.modalFooter}>

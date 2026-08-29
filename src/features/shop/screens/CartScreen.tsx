@@ -5,7 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Image } from 'expo-image';
 
+import { useFeatureFlags } from '@/core/config/featureFlags';
 import { useLanguage } from '@/core/localization/useLanguage';
+import { usePushNotifications } from '@/core/notifications';
 import { NAVIGATION } from '@/navigation/constants';
 import { navigate } from '@/navigation/navigationRef';
 import { Button } from '@/shared/components/Button';
@@ -31,18 +33,32 @@ export function CartScreen(): React.JSX.Element {
   const clearCart = useCartStore((s) => s.clearCart);
   const getSummary = useCartStore((s) => s.getSummary);
 
+  const enableAyushDiscount = useFeatureFlags((s) => s.flags.enableAyushDiscount);
+  const discountPercentage = useFeatureFlags((s) => s.flags.discountPercentage);
+  const { sendLocalNotification } = usePushNotifications();
   const summary = getSummary();
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [clearCartModalVisible, setClearCartModalVisible] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     setIsPlacingOrder(true);
-    setTimeout(() => {
+    const itemCount = summary.itemCount;
+    const totalAmount = summary.total;
+
+    setTimeout(async () => {
       setIsPlacingOrder(false);
       setOrderPlaced(true);
       clearCart();
+
+      // Trigger order purchase push notification
+      await sendLocalNotification(
+        '🛍️ Ayurvedic Order Confirmed!',
+        `Your order for ${itemCount} formulation(s) worth ₹${totalAmount} has been placed and is being handcrafted for dispatch.`,
+        { type: 'order_placed', total: totalAmount },
+      );
+
       showSuccessToast(
         t('shop.orderPlacedSuccess', 'Order Placed Successfully!'),
         t('shop.orderSuccessSub', 'Your Ayurvedic formulations are being handcrafted.'),
@@ -92,28 +108,34 @@ export function CartScreen(): React.JSX.Element {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Promo Discount Banner */}
-          {summary.subtotal < 1000 ? (
-            <View style={styles.discountPromoBanner}>
-              <Ionicons color={theme.colors.warning} name="sparkles" size={ms(16)} />
-              <Typography style={styles.discountPromoText} variant="bodySmallSemiBold">
-                {t(
-                  'shop.addMoreForDiscount',
-                  `Add ₹${1000 - summary.subtotal} more to get 10% AYUSH Discount!`,
-                  {
-                    amount: 1000 - summary.subtotal,
-                  },
-                )}
-              </Typography>
-            </View>
-          ) : (
-            <View style={styles.discountSuccessBanner}>
-              <Ionicons color={theme.colors.primary} name="shield-checkmark" size={ms(16)} />
-              <Typography style={styles.discountSuccessText} variant="bodySmallSemiBold">
-                {t('shop.discountApplied', '🎉 10% AYUSH Ministry Discount Applied!')}
-              </Typography>
-            </View>
-          )}
+          {/* Promo Discount Banner (Feature Flag Controlled) */}
+          {enableAyushDiscount &&
+            (summary.subtotal < 1000 ? (
+              <View style={styles.discountPromoBanner}>
+                <Ionicons color={theme.colors.warning} name="sparkles" size={ms(16)} />
+                <Typography style={styles.discountPromoText} variant="bodySmallSemiBold">
+                  {t(
+                    'shop.addMoreForDiscount',
+                    `Add ₹${1000 - summary.subtotal} more to get ${discountPercentage}% AYUSH Discount!`,
+                    {
+                      amount: 1000 - summary.subtotal,
+                      percent: discountPercentage,
+                    },
+                  )}
+                </Typography>
+              </View>
+            ) : (
+              <View style={styles.discountSuccessBanner}>
+                <Ionicons color={theme.colors.primary} name="shield-checkmark" size={ms(16)} />
+                <Typography style={styles.discountSuccessText} variant="bodySmallSemiBold">
+                  {t(
+                    'shop.discountApplied',
+                    `🎉 ${discountPercentage}% AYUSH Ministry Discount Applied!`,
+                    { percent: discountPercentage },
+                  )}
+                </Typography>
+              </View>
+            ))}
 
           {/* Cart Item Cards */}
           {items.map(({ product, quantity }) => (
@@ -193,7 +215,9 @@ export function CartScreen(): React.JSX.Element {
             {summary.discount > 0 && (
               <View style={styles.summaryRow}>
                 <Typography style={styles.discountLabel} variant="bodySmall">
-                  {t('shop.ayushDiscount', 'AYUSH Discount (10%)')}
+                  {t('shop.ayushDiscount', `AYUSH Discount (${discountPercentage}%)`, {
+                    percent: discountPercentage,
+                  })}
                 </Typography>
                 <Typography style={styles.discountValue} variant="bodySmallSemiBold">
                   -₹{summary.discount}

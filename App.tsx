@@ -10,6 +10,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { initNetworkListener } from '@/core/api/services/syncManager';
 import { initI18n } from '@/core/localization/i18n';
+import { usePushNotifications } from '@/core/notifications';
 import { QueryProvider } from '@/core/providers/QueryProvider';
 import { initStorage } from '@/core/storage';
 import { rehydrateStores } from '@/core/store';
@@ -22,6 +23,9 @@ SplashScreen.preventAutoHideAsync();
 
 function AppContent(): React.JSX.Element {
   const { theme } = useUnistyles();
+
+  // Initialize push notifications & request OS permission on app load
+  usePushNotifications();
 
   return (
     <ErrorBoundary>

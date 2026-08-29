@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, View } f
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useFeatureFlags } from '@/core/config/featureFlags';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { NAVIGATION } from '@/navigation/constants';
 import { navigate } from '@/navigation/navigationRef';
@@ -99,15 +100,20 @@ export function DoctorListScreen(): React.JSX.Element {
     });
   };
 
-  const sortOptions = useMemo(
-    () => [
-      { label: t('common.rating', 'Rating'), val: 'rating' as const },
+  const enableDoctorRatingSort = useFeatureFlags((s) => s.flags.enableDoctorRatingSort);
+
+  const sortOptions = useMemo(() => {
+    const list = [];
+    if (enableDoctorRatingSort) {
+      list.push({ label: t('common.rating', 'Rating'), val: 'rating' as const });
+    }
+    list.push(
       { label: t('common.experience', 'Experience'), val: 'experience' as const },
       { label: t('consultation.feeLowHigh', 'Fee: Low to High'), val: 'fee_asc' as const },
       { label: t('consultation.feeHighLow', 'Fee: High to Low'), val: 'fee_desc' as const },
-    ],
-    [t],
-  );
+    );
+    return list;
+  }, [t, enableDoctorRatingSort]);
 
   const handleSelectSort = (
     val: 'rating' | 'experience' | 'fee_asc' | 'fee_desc',

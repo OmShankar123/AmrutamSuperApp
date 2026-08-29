@@ -6,6 +6,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 
 import { useLanguage } from '@/core/localization/useLanguage';
+import { usePushNotifications } from '@/core/notifications';
 import { NAVIGATION } from '@/navigation/constants';
 import { navigate } from '@/navigation/navigationRef';
 import type { RootStackParamList } from '@/navigation/types';
@@ -41,6 +42,7 @@ export function SlotBookingScreen(): React.JSX.Element {
 
   const { data: slots, isLoading: loadingSlots } = useDoctorSlots(doctorId, selectedDate);
   const bookMutation = useBookSlot();
+  const { sendLocalNotification, scheduleAppointmentReminder } = usePushNotifications();
   const isBooking = bookMutation.isPending;
 
   // Next 7 days for date picker
@@ -113,6 +115,39 @@ export function SlotBookingScreen(): React.JSX.Element {
         }),
         t('consultation.confirmed', 'Booking Confirmed'),
       );
+
+      // Trigger instant consultation confirmation push notification
+      await sendLocalNotification(
+        `🌿 Consultation Confirmed with Dr. ${doctor.name}`,
+        `Your appointment for ${selectedSlot.time} on ${selectedSlot.date} has been confirmed. Tap to view receipt.`,
+        { bookingId: createdBooking.id, type: 'consultation_booked' },
+      );
+
+      // Schedule 5-minute pre-appointment reminder
+      try {
+        const timeParts = selectedSlot.time.split(' ');
+        const timeStr = timeParts[0];
+        const meridiem = timeParts[1];
+        let [hours, minutes] = timeStr.split(':').map(Number);
+        if (meridiem === 'PM' && hours < 12) hours += 12;
+        if (meridiem === 'AM' && hours === 12) hours = 0;
+
+        const appointmentDate = new Date(selectedSlot.date);
+        appointmentDate.setHours(hours, minutes || 0, 0, 0);
+        const reminderDate = new Date(appointmentDate.getTime() - 5 * 60 * 1000);
+
+        const targetDate =
+          reminderDate.getTime() > Date.now() ? reminderDate : new Date(Date.now() + 15 * 1000); // 15-second demo fallback if booking current slot
+
+        await scheduleAppointmentReminder(
+          `⏰ Upcoming Consultation in 5 Minutes`,
+          `Your Ayurvedic consultation with Dr. ${doctor.name} starts at ${selectedSlot.time}. Please be ready.`,
+          targetDate,
+          { bookingId: createdBooking.id, doctorId: doctor.id, type: 'consultation_5min_reminder' },
+        );
+      } catch (err) {
+        console.warn('Failed to schedule 5-minute reminder:', err);
+      }
 
       navigate(NAVIGATION.BOOKING_CONFIRMATION, { bookingId: createdBooking.id });
     } catch (err: any) {
