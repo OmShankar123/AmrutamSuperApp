@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { GestureResponderEvent } from 'react-native';
 import { ScrollView, Switch, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, UnistylesRuntime, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +8,7 @@ import type { ChaosConfig } from '@/core/api/interceptors/chaos';
 import { getChaosConfig, setChaosConfig } from '@/core/api/interceptors/chaos';
 import { useNetworkStore } from '@/core/api/services/syncManager';
 import { useFeatureFlags } from '@/core/config/featureFlags';
+import { useThemeTransition } from '@/core/theme/ThemeTransitionProvider';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { usePushNotifications } from '@/core/notifications';
 import { queryClient } from '@/core/providers/QueryProvider';
@@ -38,6 +40,8 @@ export function DevPanelScreen(): React.JSX.Element {
     sendLocalNotification,
   } = usePushNotifications();
 
+  const { switchThemeWithAnimation } = useThemeTransition();
+  const [isThemeAnimating, setIsThemeAnimating] = React.useState(false);
   const [activeTheme, setActiveTheme] = useState<'light' | 'dark' | 'system'>(() => {
     if (UnistylesRuntime.hasAdaptiveThemes) return 'system';
     return (UnistylesRuntime.themeName as 'light' | 'dark') || 'light';
@@ -58,15 +62,23 @@ export function DevPanelScreen(): React.JSX.Element {
     }
   };
 
-  const handleSelectTheme = (mode: 'light' | 'dark' | 'system') => {
-    setActiveTheme(mode);
-    if (mode === 'system') {
-      UnistylesRuntime.setAdaptiveThemes(true);
-    } else {
-      UnistylesRuntime.setAdaptiveThemes(false);
-      UnistylesRuntime.setTheme(mode);
-    }
-    showSuccessToast(`Theme changed to ${mode.toUpperCase()}`, 'Theme Updated');
+  const handleSelectTheme = (
+    mode: 'light' | 'dark' | 'system',
+    event?: GestureResponderEvent,
+  ) => {
+    if (isThemeAnimating) return;
+    const touchX = event?.nativeEvent?.pageX;
+    const touchY = event?.nativeEvent?.pageY;
+    const origin = touchX != null && touchY != null ? { x: touchX, y: touchY } : undefined;
+
+    // Do NOT setActiveTheme here — it re-renders the screen before the screenshot
+    // is captured, causing buttons to flash. Defer until animation completes.
+    setIsThemeAnimating(true);
+    switchThemeWithAnimation(mode, origin, () => {
+      setActiveTheme(mode);
+      setIsThemeAnimating(false);
+      showSuccessToast(`Theme changed to ${mode.toUpperCase()}`, 'Theme Updated');
+    });
   };
 
   const handleResetCache = () => {
@@ -139,7 +151,7 @@ export function DevPanelScreen(): React.JSX.Element {
               return (
                 <TouchableOpacity
                   key={mode}
-                  onPress={() => handleSelectTheme(mode)}
+                  onPress={(e) => handleSelectTheme(mode, e)}
                   style={[styles.themeChip, isSelected && styles.themeChipActive]}
                 >
                   <Ionicons

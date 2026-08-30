@@ -14,6 +14,7 @@ import { usePushNotifications } from '@/core/notifications';
 import { QueryProvider } from '@/core/providers/QueryProvider';
 import { initStorage } from '@/core/storage';
 import { rehydrateStores } from '@/core/store';
+import { ThemeTransitionProvider } from '@/core/theme/ThemeTransitionProvider';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
 import { OfflineBanner } from '@/shared/components/OfflineBanner';
@@ -39,10 +40,12 @@ function AppContent(): React.JSX.Element {
         <KeyboardProvider>
           <SafeAreaProvider>
             <QueryProvider>
-              <View style={styles.root}>
-                <OfflineBanner />
-                <RootNavigator />
-              </View>
+              <ThemeTransitionProvider>
+                <View style={styles.root}>
+                  <OfflineBanner />
+                  <RootNavigator />
+                </View>
+              </ThemeTransitionProvider>
             </QueryProvider>
           </SafeAreaProvider>
         </KeyboardProvider>
