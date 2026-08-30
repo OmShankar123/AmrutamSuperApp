@@ -102,6 +102,8 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
           await apiClient.post(API_ENDPOINTS.BOOK_CONSULTATION, mutation.payload);
         } else if (mutation.type === 'CANCEL_CONSULTATION') {
           await apiClient.post(API_ENDPOINTS.CANCEL_CONSULTATION(mutation.payload.bookingId));
+        } else if (mutation.type === 'PLACE_ORDER') {
+          await apiClient.post(API_ENDPOINTS.PLACE_ORDER, mutation.payload);
         }
         removeQueuedMutation(mutation.id);
         successCount++;

@@ -142,10 +142,10 @@ const styles = StyleSheet.create((theme) => ({
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ms(4),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
-    borderRadius: theme.radius.sm,
+    gap: ms(6),
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(6),
+    borderRadius: ms(20),
     backgroundColor: theme.colors.surfaceElevated,
     marginRight: ms(8),
     borderWidth: 1,
@@ -153,10 +153,11 @@ const styles = StyleSheet.create((theme) => ({
   },
   filterButtonActive: {
     borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.successLight,
+    backgroundColor: theme.colors.primary,
   },
   filterButtonText: {
-    fontSize: ms(11),
+    fontSize: ms(11.5),
+    fontFamily: theme.fonts.semiBold,
   },
   sortList: {
     flex: 1,
@@ -170,10 +171,10 @@ const styles = StyleSheet.create((theme) => ({
     flexDirection: 'row',
     alignItems: 'center',
     gap: ms(4),
-    paddingHorizontal: ms(10),
-    paddingVertical: ms(5),
+    paddingHorizontal: ms(12),
+    paddingVertical: ms(6),
     borderRadius: ms(20),
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.surfaceElevated,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
@@ -183,7 +184,8 @@ const styles = StyleSheet.create((theme) => ({
   },
   sortPillText: {
     color: theme.colors.textSecondary,
-    fontSize: ms(11),
+    fontSize: ms(11.5),
+    fontFamily: theme.fonts.semiBold,
   },
   sortPillTextActive: {
     color: theme.colors.textInverse,

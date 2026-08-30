@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
 import { healthRecordsService } from '../services';
 import type { HealthRecord, HealthRecordFilterParams, HealthRecordsResponse } from '../types';
@@ -33,5 +33,6 @@ export function useHealthRecordDetail(recordId: string) {
     queryFn: () => healthRecordsService.getRecordDetail(recordId),
     enabled: Boolean(recordId),
     staleTime: 1000 * 60 * 10,
+    placeholderData: keepPreviousData,
   });
 }

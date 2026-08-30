@@ -82,6 +82,13 @@ export function handleMockRoute(config: InternalAxiosRequestConfig): AxiosRespon
     return createResponse(bookings);
   }
 
+  // ORDERS ROUTE
+  if ((url === '/orders' || url === '/shop/orders' || url === API_ENDPOINTS.PLACE_ORDER) && method === 'post') {
+    const body = typeof config.data === 'string' ? JSON.parse(config.data) : config.data;
+    const res = db.placeOrder(body);
+    return createResponse(res, 201);
+  }
+
   // PRODUCTS ROUTES
   if (url === API_ENDPOINTS.PRODUCTS && method === 'get') {
     const res = db.queryProducts({

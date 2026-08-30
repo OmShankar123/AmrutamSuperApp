@@ -94,7 +94,7 @@ export function ProductCatalogScreen(): React.JSX.Element {
   }, [data]);
 
   const handleProductPress = useCallback((product: Product) => {
-    navigate(NAVIGATION.PRODUCT_DETAIL, { productId: product.id });
+    navigate(NAVIGATION.PRODUCT_DETAIL, { productId: product.id, initialProduct: product });
   }, []);
 
   const hasActiveFilters = Boolean(

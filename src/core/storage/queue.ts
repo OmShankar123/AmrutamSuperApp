@@ -2,7 +2,7 @@ import { queueStorage } from './index';
 
 export interface QueuedMutation {
   id: string;
-  type: 'BOOK_CONSULTATION' | 'CANCEL_CONSULTATION' | 'ADD_HEALTH_RECORD';
+  type: 'BOOK_CONSULTATION' | 'CANCEL_CONSULTATION' | 'ADD_HEALTH_RECORD' | 'PLACE_ORDER';
   payload: any;
   createdAt: string;
   retryCount: number;

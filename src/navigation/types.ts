@@ -1,3 +1,5 @@
+import type { Doctor } from '@/features/consultation/types';
+import type { Product } from '@/features/shop/types';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
 import type { NAVIGATION } from './constants';
@@ -15,14 +17,14 @@ export type RootStackParamList = {
 
   // Consultation Flow
   [NAVIGATION.DOCTOR_LIST]: undefined;
-  [NAVIGATION.DOCTOR_DETAIL]: { doctorId: string };
-  [NAVIGATION.SLOT_BOOKING]: { doctorId: string };
+  [NAVIGATION.DOCTOR_DETAIL]: { doctorId: string; initialDoctor?: Doctor };
+  [NAVIGATION.SLOT_BOOKING]: { doctorId: string; initialDoctor?: Doctor };
   [NAVIGATION.BOOKING_CONFIRMATION]: { bookingId: string };
   [NAVIGATION.UPCOMING_CONSULTATIONS]: undefined;
 
   // Shop Flow
   [NAVIGATION.PRODUCT_CATALOG]: undefined;
-  [NAVIGATION.PRODUCT_DETAIL]: { productId: string };
+  [NAVIGATION.PRODUCT_DETAIL]: { productId: string; initialProduct?: Product };
   [NAVIGATION.CART]: undefined;
   [NAVIGATION.WISHLIST]: undefined;
 

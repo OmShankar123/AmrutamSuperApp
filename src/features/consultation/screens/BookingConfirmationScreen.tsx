@@ -5,10 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 
+import { useNetworkStore } from '@/core/api/services/syncManager';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { NAVIGATION } from '@/navigation/constants';
 import { resetAndNavigate } from '@/navigation/navigationRef';
 import type { RootStackParamList } from '@/navigation/types';
+import { Badge } from '@/shared/components/Badge';
 import { Button } from '@/shared/components/Button';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
 import { Typography } from '@/shared/components/Typography';
@@ -26,9 +28,14 @@ export function BookingConfirmationScreen(): React.JSX.Element {
   const route = useRoute<BookingConfirmationRouteProp>();
   const { bookingId } = route.params;
   const { t } = useLanguage();
+  const isConnected = useNetworkStore((s) => s.isConnected);
 
   const { data: bookings } = useMyBookings();
   const booking = bookings?.find((b) => b.id === bookingId) ?? bookings?.[0];
+
+  const isOfflineQueued =
+    !isConnected ||
+    Boolean(booking?.id && (booking.id.startsWith('offline_') || booking.id.startsWith('book_offline_')));
 
   return (
     <ScreenWrapper withBottomInset withHorizontalPadding={false} withTopInset>
@@ -40,19 +47,36 @@ export function BookingConfirmationScreen(): React.JSX.Element {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          <View style={styles.iconCircle}>
-            <Ionicons color={theme.colors.primary} name="checkmark-circle" size={ms(44)} />
+          <View style={[styles.iconCircle, isOfflineQueued && styles.offlineIconCircle]}>
+            <Ionicons
+              color={isOfflineQueued ? theme.colors.warning : theme.colors.primary}
+              name={isOfflineQueued ? 'cloud-offline-outline' : 'checkmark-circle'}
+              size={ms(44)}
+            />
           </View>
 
           <Typography variant="h1">
-            {t('consultation.appointmentConfirmed', 'Appointment Confirmed!')}
+            {isOfflineQueued
+              ? t('consultation.bookingSavedOffline', 'Booking Saved Offline!')
+              : t('consultation.appointmentConfirmed', 'Appointment Confirmed!')}
           </Typography>
           <Typography style={styles.subheading} variant="bodySmall">
-            {t(
-              'consultation.confirmationSub',
-              'Your consultation request has been registered in the Amrutam Ayurvedic network.',
-            )}
+            {isOfflineQueued
+              ? t(
+                  'consultation.offlineQueueSub',
+                  'Your consultation request is securely queued on this device and will sync automatically once internet returns.',
+                )
+              : t(
+                  'consultation.confirmationSub',
+                  'Your consultation request has been registered in the Amrutam Ayurvedic network.',
+                )}
           </Typography>
+
+          {isOfflineQueued && (
+            <View style={styles.offlineStatusPill}>
+              <Badge label={t('consultation.pendingSync', 'PENDING SYNC • OFFLINE')} variant="warning" />
+            </View>
+          )}
 
           {booking && (
             <View style={styles.receiptCard}>
@@ -99,22 +123,35 @@ export function BookingConfirmationScreen(): React.JSX.Element {
             </View>
           )}
 
-          <View style={styles.tipsBox}>
+          <View style={[styles.tipsBox, isOfflineQueued && styles.offlineTipsBox]}>
             <View style={styles.tipsHeaderRow}>
               <Ionicons
-                color={theme.colors.primaryDark}
-                name="information-circle-outline"
+                color={isOfflineQueued ? theme.colors.warning : theme.colors.primaryDark}
+                name={isOfflineQueued ? 'shield-checkmark-outline' : 'information-circle-outline'}
                 size={ms(16)}
               />
-              <Typography style={styles.tipsHeading} variant="label">
-                {t('consultation.preConsultationTips', 'Pre-Consultation Instructions')}
+              <Typography
+                style={[styles.tipsHeading, isOfflineQueued && styles.offlineTipsHeading]}
+                variant="label"
+              >
+                {isOfflineQueued
+                  ? t('consultation.offlineSyncActive', 'Automatic Sync Active')
+                  : t('consultation.preConsultationTips', 'Pre-Consultation Instructions')}
               </Typography>
             </View>
-            <Typography style={styles.tipsBody} variant="caption">
-              {t(
-                'consultation.tipsBody',
-                'Keep your stomach light before the pulse evaluation.\nUpload your past health records in the Health Records tab.',
-              )}
+            <Typography
+              style={[styles.tipsBody, isOfflineQueued && styles.offlineTipsBody]}
+              variant="caption"
+            >
+              {isOfflineQueued
+                ? t(
+                    'consultation.offlineSyncActiveSub',
+                    'Zero data loss guarantee: You do not need to repeat this booking. When online, our sync manager will confirm your slot in the background.',
+                  )
+                : t(
+                    'consultation.tipsBody',
+                    'Keep your stomach light before the pulse evaluation.\nUpload your past health records in the Health Records tab.',
+                  )}
             </Typography>
           </View>
         </View>
@@ -153,11 +190,17 @@ const styles = StyleSheet.create((theme) => ({
     justifyContent: 'center',
     marginBottom: ms(12),
   },
+  offlineIconCircle: {
+    backgroundColor: theme.colors.warningLight,
+  },
   subheading: {
     textAlign: 'center',
     marginTop: ms(4),
     lineHeight: ms(19),
     paddingHorizontal: ms(10),
+  },
+  offlineStatusPill: {
+    marginTop: ms(12),
   },
   receiptCard: {
     width: '100%',
@@ -197,6 +240,10 @@ const styles = StyleSheet.create((theme) => ({
     borderWidth: 1,
     borderColor: theme.colors.primaryLight,
   },
+  offlineTipsBox: {
+    backgroundColor: theme.colors.warningLight,
+    borderColor: theme.colors.warning,
+  },
   tipsHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -206,9 +253,15 @@ const styles = StyleSheet.create((theme) => ({
   tipsHeading: {
     color: theme.colors.primaryDark,
   },
+  offlineTipsHeading: {
+    color: theme.colors.warning,
+  },
   tipsBody: {
     color: theme.colors.primary,
     lineHeight: ms(17),
+  },
+  offlineTipsBody: {
+    color: theme.colors.textSecondary,
   },
   buttonGroup: {
     width: '100%',

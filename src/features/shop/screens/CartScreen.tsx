@@ -6,11 +6,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Image } from 'expo-image';
 
+import { apiClient } from '@/core/api/client';
+import { API_ENDPOINTS } from '@/core/api/endpoints';
+import { useNetworkStore } from '@/core/api/services/syncManager';
+import { enqueueMutation } from '@/core/storage/queue';
 import { useFeatureFlags } from '@/core/config/featureFlags';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { usePushNotifications } from '@/core/notifications';
 import { NAVIGATION } from '@/navigation/constants';
 import { navigate } from '@/navigation/navigationRef';
+import { Badge } from '@/shared/components/Badge';
 import { Button } from '@/shared/components/Button';
 import { ConfirmationModal } from '@/shared/components/ConfirmationModal';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -42,29 +47,69 @@ export function CartScreen(): React.JSX.Element {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [clearCartModalVisible, setClearCartModalVisible] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const isConnected = useNetworkStore((s) => s.isConnected);
+  const [isOfflineOrder, setIsOfflineOrder] = useState(false);
 
   const handlePlaceOrder = async () => {
     setIsPlacingOrder(true);
     const itemCount = summary.itemCount;
     const totalAmount = summary.total;
+    const orderPayload = {
+      orderId: `order_${isConnected ? '' : 'offline_'}${Date.now()}`,
+      items: [...items],
+      summary,
+      address: t('shop.mockAddress', 'Sector 62, Noida, UP (Home)'),
+      paymentMethod: t('shop.mockPaymentMethod', 'UPI / NetBanking / COD'),
+      createdAt: new Date().toISOString(),
+    };
+
+    let offlineMode = false;
+    if (!isConnected) {
+      offlineMode = true;
+      setIsOfflineOrder(true);
+      enqueueMutation({
+        type: 'PLACE_ORDER',
+        payload: orderPayload,
+      });
+      useNetworkStore.getState().updatePendingCount();
+    } else {
+      setIsOfflineOrder(false);
+      try {
+        await apiClient.post(API_ENDPOINTS.PLACE_ORDER, orderPayload);
+      } catch {
+        offlineMode = true;
+        setIsOfflineOrder(true);
+        enqueueMutation({
+          type: 'PLACE_ORDER',
+          payload: orderPayload,
+        });
+        useNetworkStore.getState().updatePendingCount();
+      }
+    }
 
     setTimeout(async () => {
       setIsPlacingOrder(false);
       setOrderPlaced(true);
       clearCart();
 
-      // Trigger order purchase push notification
+      // Trigger order push notification
       await sendLocalNotification(
-        '🛍️ Ayurvedic Order Confirmed!',
-        `Your order for ${itemCount} formulation(s) worth ₹${totalAmount} has been placed and is being handcrafted for dispatch.`,
+        offlineMode ? '📦 Order Saved Offline!' : '🛍️ Ayurvedic Order Confirmed!',
+        offlineMode
+          ? `Your order for ${itemCount} formulation(s) worth ₹${totalAmount} is queued offline and will sync automatically when online.`
+          : `Your order for ${itemCount} formulation(s) worth ₹${totalAmount} has been placed and is being handcrafted for dispatch.`,
         { type: 'order_placed', total: totalAmount },
       );
 
       showSuccessToast(
-        t('shop.orderPlacedSuccess', 'Order Placed Successfully!'),
-        t('shop.orderSuccessSub', 'Your Ayurvedic formulations are being handcrafted.'),
+        offlineMode
+          ? t('shop.orderSavedOffline', 'Order Saved Offline!')
+          : t('shop.orderPlacedSuccess', 'Order Placed Successfully!'),
+        offlineMode
+          ? t('shop.orderSavedOfflineSub', 'Your Ayurvedic order is securely queued on your device.')
+          : t('shop.orderSuccessSub', 'Your Ayurvedic formulations are being handcrafted.'),
       );
-    }, 600);
+    }, 400);
   };
 
   const clearAction =
@@ -343,9 +388,18 @@ export function CartScreen(): React.JSX.Element {
             ) : (
               <View style={styles.successWrapper}>
                 {/* Clean Centered Badge */}
-                <Animated.View entering={ZoomIn.duration(400)} style={styles.successBadgeOuter}>
-                  <View style={styles.successBadgeInner}>
-                    <Ionicons color="#FFFFFF" name="checkmark" size={ms(32)} />
+                <Animated.View
+                  entering={ZoomIn.duration(400)}
+                  style={[styles.successBadgeOuter, isOfflineOrder && styles.offlineBadgeOuter]}
+                >
+                  <View
+                    style={[styles.successBadgeInner, isOfflineOrder && styles.offlineBadgeInner]}
+                  >
+                    <Ionicons
+                      color={theme.colors.textInverse}
+                      name={isOfflineOrder ? "cloud-offline-outline" : "checkmark"}
+                      size={ms(32)}
+                    />
                   </View>
                 </Animated.View>
 
@@ -354,19 +408,35 @@ export function CartScreen(): React.JSX.Element {
                   style={{ alignItems: 'center' }}
                 >
                   <Typography style={styles.successHeading} variant="h1">
-                    {t('shop.orderPlacedSuccess', 'Order Placed Successfully!')}
+                    {isOfflineOrder
+                      ? t('shop.orderSavedOffline', 'Order Saved Offline!')
+                      : t('shop.orderPlacedSuccess', 'Order Placed Successfully!')}
                   </Typography>
                 </Animated.View>
+
+                {isOfflineOrder && (
+                  <Animated.View
+                    entering={FadeInDown.delay(180).duration(350)}
+                    style={{ marginTop: ms(8) }}
+                  >
+                    <Badge label={t('consultation.pendingSync', 'PENDING SYNC • OFFLINE')} variant="warning" />
+                  </Animated.View>
+                )}
 
                 <Animated.View
                   entering={FadeInDown.delay(230).duration(350)}
                   style={{ alignItems: 'center' }}
                 >
                   <Typography style={styles.successSub} variant="bodySmall">
-                    {t(
-                      'shop.orderSuccessSub',
-                      'Your Ayurvedic formulations are being handcrafted and prepared for dispatch.',
-                    )}
+                    {isOfflineOrder
+                      ? t(
+                          'shop.orderSavedOfflineSub',
+                          'Your Ayurvedic order is securely queued on your device and will automatically transmit once connected.',
+                        )
+                      : t(
+                          'shop.orderSuccessSub',
+                          'Your Ayurvedic formulations are being handcrafted and prepared for dispatch.',
+                        )}
                   </Typography>
                 </Animated.View>
 
@@ -375,9 +445,15 @@ export function CartScreen(): React.JSX.Element {
                   entering={FadeInDown.delay(310).duration(350)}
                   style={styles.orderInfoPill}
                 >
-                  <Ionicons color={theme.colors.primary} name="shield-checkmark" size={ms(16)} />
+                  <Ionicons
+                    color={isOfflineOrder ? theme.colors.warning : theme.colors.primary}
+                    name={isOfflineOrder ? "shield-checkmark" : "shield-checkmark"}
+                    size={ms(16)}
+                  />
                   <Typography style={styles.orderInfoText} variant="caption">
-                    100% Authentic Ayush Certified • Dispatch within 24h
+                    {isOfflineOrder
+                      ? t('shop.offlineOrderPill', 'Offline Protection Active • Auto-Sync on Reconnect')
+                      : '100% Authentic Ayush Certified • Dispatch within 24h'}
                   </Typography>
                 </Animated.View>
 
@@ -580,10 +656,13 @@ const styles = StyleSheet.create((theme, rt) => ({
     width: ms(84),
     height: ms(84),
     borderRadius: ms(42),
-    backgroundColor: '#E8F5E9',
+    backgroundColor: theme.colors.successLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: ms(16),
+  },
+  offlineBadgeOuter: {
+    backgroundColor: theme.colors.warningLight,
   },
   successBadgeInner: {
     width: ms(56),
@@ -593,6 +672,9 @@ const styles = StyleSheet.create((theme, rt) => ({
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: theme.shadows.sm,
+  },
+  offlineBadgeInner: {
+    backgroundColor: theme.colors.warning,
   },
   successHeading: {
     textAlign: 'center',

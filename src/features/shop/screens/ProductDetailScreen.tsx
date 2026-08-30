@@ -28,10 +28,10 @@ type ProductDetailRouteProp = RouteProp<RootStackParamList, typeof NAVIGATION.PR
 export function ProductDetailScreen(): React.JSX.Element {
   const { theme } = useUnistyles();
   const route = useRoute<ProductDetailRouteProp>();
-  const { productId } = route.params;
+  const { productId, initialProduct } = route.params ?? {};
   const { t } = useLanguage();
 
-  const { data: product, isLoading, isError } = useProductDetail(productId);
+  const { data: product, isLoading, isError, refetch } = useProductDetail(productId, initialProduct);
   const addToCart = useCartStore((s) => s.addToCart);
   const toggleWishlist = useWishlistStore((s) => s.toggleWishlist);
   const isWishlisted = useWishlistStore((s) => s.items.some((i) => i.id === productId));

@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
 
   // Shop
   PRODUCTS: '/products',
+  PLACE_ORDER: '/orders',
   PRODUCT_DETAIL: (id: string) => `/products/${id}`,
 
   // Health Records

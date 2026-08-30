@@ -96,20 +96,27 @@ export function UpcomingConsultationsScreen(): React.JSX.Element {
           </View>
           <View style={styles.docInfo}>
             <Typography style={styles.docName} variant="h3">
-              Dr. {item.doctorName}
+              {item.doctorName.startsWith('Dr.') ? item.doctorName : `Dr. ${item.doctorName}`}
             </Typography>
             <Typography style={styles.specText} variant="caption">
               {item.specialization}
             </Typography>
           </View>
-          <Badge
-            label={
-              isConfirmed
-                ? t('consultation.confirmed', 'CONFIRMED')
-                : t('consultation.cancelled', 'CANCELLED')
-            }
-            variant={isConfirmed ? 'success' : 'error'}
-          />
+          {item.id && (item.id.startsWith('offline_') || item.id.startsWith('book_offline_')) ? (
+            <Badge
+              label={t('consultation.pendingSyncShort', 'SYNC PENDING')}
+              variant="warning"
+            />
+          ) : (
+            <Badge
+              label={
+                isConfirmed
+                  ? t('consultation.confirmed', 'CONFIRMED')
+                  : t('consultation.cancelled', 'CANCELLED')
+              }
+              variant={isConfirmed ? 'success' : 'error'}
+            />
+          )}
         </View>
 
         <View style={styles.divider} />

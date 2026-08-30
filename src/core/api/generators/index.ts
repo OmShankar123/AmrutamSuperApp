@@ -164,7 +164,7 @@ class InMemoryDatabase {
   }
 
   bookSlot(booking: Omit<Booking, 'id' | 'bookedAt' | 'status'>): Booking {
-    if (this.slotBookings.has(booking.slotId)) {
+    if (booking.slotId && booking.slotId !== 'pending_slot' && this.slotBookings.has(booking.slotId)) {
       throw new Error('SLOT_CONFLICT: This slot has already been booked by another user.');
     }
 
@@ -178,7 +178,7 @@ class InMemoryDatabase {
     );
     if (existingPatientBooking) {
       throw new Error(
-        `DOUBLE_BOOKING: You already have a confirmed consultation with Dr. ${existingPatientBooking.doctorName} on ${booking.date} at ${booking.time}.`,
+        `DOUBLE_BOOKING: You already have a confirmed consultation with ${existingPatientBooking.doctorName} on ${booking.date} at ${booking.time}.`,
       );
     }
 
@@ -190,7 +190,7 @@ class InMemoryDatabase {
       bookedAt: new Date().toISOString(),
     };
 
-    this.slotBookings.add(booking.slotId);
+    if (booking.slotId && booking.slotId !== 'pending_slot') this.slotBookings.add(booking.slotId);
     this.bookings.set(bookingId, createdBooking);
     this.saveToStorage();
 
@@ -249,6 +249,40 @@ class InMemoryDatabase {
     return Array.from(this.bookings.values()).sort(
       (a, b) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime(),
     );
+  }
+
+  placeOrder(orderData: any) {
+    const orderId = orderData.orderId || `order_${Date.now()}`;
+    const now = new Date();
+    const newRecord: HealthRecord = {
+      id: `rec_order_${Date.now()}`,
+      patientId: 'patient_default',
+      type: 'prescription',
+      title: `Ayurvedic Order - ${orderData.items?.length || 1} Item(s)`,
+      doctorName: 'Amrutam Vedic Pharmacy',
+      clinicOrLabName: 'Amrutam Herbal Dispensary',
+      date: now.toISOString(),
+      formattedDate: now.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }),
+      monthYearGroup: `${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`,
+      summary: `Order #${orderId} for ${orderData.items?.map((i: any) => i.product?.name).filter(Boolean).join(', ') || 'Ayurvedic Formulations'}. Total: ₹${orderData.summary?.total || 0}.`,
+      notes: `Order placed for ${orderData.items?.map((i: any) => `${i.quantity}x ${i.product?.name}`).join(', ') || 'Formulations'}. Delivery Address: ${orderData.address || 'Home'}.`,
+      vitals: {
+        dosha: 'Tridoshic',
+        bp: '120/80',
+        pulse: 72,
+        weight: 65,
+      },
+      attachments: [],
+      tags: ['Ayurvedic Medicines', 'Herbal Formulations', 'Prescription'],
+    };
+    const records = this.getHealthRecords();
+    records.unshift(newRecord);
+    this.records = records;
+    return { orderId, success: true, message: 'Order placed successfully' };
   }
 
   queryProducts(params: ProductFilterParams): PaginatedResponse<Product> {

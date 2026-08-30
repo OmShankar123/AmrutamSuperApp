@@ -1,4 +1,10 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 
 import {
   bookConsultationSlot,
@@ -8,7 +14,7 @@ import {
   fetchDoctorSlots,
   fetchMyBookings,
 } from '../services';
-import type { Booking, DoctorFilterParams } from '../types';
+import type { Booking, Doctor, DoctorFilterParams } from '../types';
 
 export const doctorKeys = {
   all: ['doctors'] as const,
@@ -37,13 +43,44 @@ export function useInfiniteDoctors(filters: DoctorFilterParams = {}) {
   });
 }
 
-export function useDoctorDetail(doctorId: string) {
+export function useDoctorDetail(doctorId: string, initialDoctor?: Doctor) {
+  const queryClient = useQueryClient();
+
+  const findInListCache = (): Doctor | undefined => {
+    if (initialDoctor) return initialDoctor;
+    const listQueries = queryClient.getQueriesData<any>({
+      queryKey: doctorKeys.lists(),
+    });
+    for (const [, data] of listQueries) {
+      if (data?.pages) {
+        for (const page of data.pages) {
+          const match = page?.data?.find((d: any) => d.id === doctorId);
+          if (match) return match;
+        }
+      } else if (Array.isArray(data?.data)) {
+        const match = data.data.find((d: any) => d.id === doctorId);
+        if (match) return match;
+      }
+    }
+    return undefined;
+  };
+
   return useQuery({
     queryKey: doctorKeys.detail(doctorId),
-    queryFn: () => fetchDoctorDetail(doctorId),
+    queryFn: async () => {
+      try {
+        return await fetchDoctorDetail(doctorId);
+      } catch (err) {
+        const fallback = findInListCache();
+        if (fallback) return fallback;
+        throw err;
+      }
+    },
+    initialData: findInListCache,
+    initialDataUpdatedAt: () => Date.now(),
     enabled: Boolean(doctorId),
     staleTime: 1000 * 60 * 10,
-  });
+      });
 }
 
 export function useDoctorSlots(doctorId: string, date: string) {
@@ -52,6 +89,7 @@ export function useDoctorSlots(doctorId: string, date: string) {
     queryFn: () => fetchDoctorSlots(doctorId, date),
     enabled: Boolean(doctorId) && Boolean(date),
     staleTime: 1000 * 60 * 2,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -60,11 +98,14 @@ export function useBookSlot() {
 
   return useMutation({
     mutationFn: (data: Omit<Booking, 'id' | 'bookedAt' | 'status'>) => bookConsultationSlot(data),
-    onSuccess: (_, variables) => {
+    onSuccess: (newBooking, variables) => {
+      queryClient.setQueryData<Booking[]>(doctorKeys.myBookings(), (old = []) => [
+        newBooking,
+        ...old.filter((b) => b.id !== newBooking.id),
+      ]);
       queryClient.invalidateQueries({
         queryKey: doctorKeys.slots(variables.doctorId, variables.date),
       });
-      queryClient.invalidateQueries({ queryKey: doctorKeys.myBookings() });
     },
   });
 }
@@ -74,8 +115,10 @@ export function useCancelBooking() {
 
   return useMutation({
     mutationFn: (bookingId: string) => cancelConsultationBooking(bookingId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: doctorKeys.myBookings() });
+    onSuccess: (_, bookingId) => {
+      queryClient.setQueryData<Booking[]>(doctorKeys.myBookings(), (old = []) =>
+        old.map((b) => (b.id === bookingId ? { ...b, status: 'cancelled' } : b)),
+      );
     },
   });
 }

@@ -1,10 +1,11 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { FlatList, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 
+import { useNetworkStore } from '@/core/api/services/syncManager';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { usePushNotifications } from '@/core/notifications';
 import { NAVIGATION } from '@/navigation/constants';
@@ -27,23 +28,54 @@ type SlotBookingRouteProp = RouteProp<RootStackParamList, typeof NAVIGATION.SLOT
 export function SlotBookingScreen(): React.JSX.Element {
   const { theme } = useUnistyles();
   const route = useRoute<SlotBookingRouteProp>();
-  const { doctorId } = route.params;
+  const { doctorId, initialDoctor } = route.params;
   const { t } = useLanguage();
   const dateListRef = useRef<FlatList>(null);
 
-  const { data: doctor } = useDoctorDetail(doctorId);
+  const { data: doctor } = useDoctorDetail(doctorId, initialDoctor);
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [selectedTimeWindow, setSelectedTimeWindow] = useState('09:00 AM - 12:00 PM');
 
   const [patientName, setPatientName] = useState('');
   const [patientPhone, setPatientPhone] = useState('');
   const [patientAge, setPatientAge] = useState('');
   const [symptoms, setSymptoms] = useState('');
 
-  const { data: slots, isLoading: loadingSlots } = useDoctorSlots(doctorId, selectedDate);
+  const isConnected = useNetworkStore((s) => s.isConnected);
+  const {
+    data: slots,
+    isLoading: loadingSlots,
+  } = useDoctorSlots(doctorId, selectedDate);
   const bookMutation = useBookSlot();
   const { sendLocalNotification, scheduleAppointmentReminder } = usePushNotifications();
   const isBooking = bookMutation.isPending;
+
+  const offlineQueueMode = !isConnected && (!slots || slots.length === 0);
+
+  const offlineTimeWindows = useMemo(
+    () => [
+      {
+        id: 'morning',
+        label: t('consultation.morning', 'Morning'),
+        time: '09:00 AM - 12:00 PM',
+        icon: 'sunny-outline' as const,
+      },
+      {
+        id: 'afternoon',
+        label: t('consultation.afternoon', 'Afternoon'),
+        time: '01:00 PM - 05:00 PM',
+        icon: 'partly-sunny-outline' as const,
+      },
+      {
+        id: 'evening',
+        label: t('consultation.evening', 'Evening'),
+        time: '06:00 PM - 08:00 PM',
+        icon: 'moon-outline' as const,
+      },
+    ],
+    [t],
+  );
 
   // Next 7 days for date picker
   const availableDates = useMemo(() => {
@@ -72,7 +104,7 @@ export function SlotBookingScreen(): React.JSX.Element {
   };
 
   const handleConfirmBooking = async () => {
-    if (!doctor || !selectedSlot) {
+    if (!doctor || (!selectedSlot && !offlineQueueMode)) {
       showErrorToast(
         t('consultation.selectSlotFirst', 'Please select an appointment time slot.'),
         t('consultation.slotRequired', 'Slot Required'),
@@ -95,13 +127,14 @@ export function SlotBookingScreen(): React.JSX.Element {
     }
 
     try {
+      const bookingTime = selectedSlot ? selectedSlot.time : selectedTimeWindow;
       const createdBooking = await bookMutation.mutateAsync({
         doctorId: doctor.id,
         doctorName: doctor.name,
         specialization: doctor.specialization,
-        slotId: selectedSlot.id,
-        date: selectedSlot.date,
-        time: selectedSlot.time,
+        slotId: selectedSlot?.id ?? `offline_slot_${Date.now()}`,
+        date: selectedSlot?.date ?? selectedDate,
+        time: bookingTime,
         patientName: patientName.trim(),
         patientPhone: patientPhone.trim(),
         patientAge: parseInt(patientAge, 10) || 30,
@@ -110,43 +143,62 @@ export function SlotBookingScreen(): React.JSX.Element {
       });
 
       showSuccessToast(
-        t('consultation.bookingConfirmedToast', 'Appointment booked with {{name}}', {
-          name: doctor.name,
-        }),
-        t('consultation.confirmed', 'Booking Confirmed'),
+        offlineQueueMode
+          ? t('consultation.bookingSavedOffline', 'Booking Saved Offline!')
+          : t('consultation.bookingConfirmedToast', 'Appointment booked with {{name}}', {
+              name: doctor.name,
+            }),
+        offlineQueueMode
+          ? t('consultation.queued', 'Queued')
+          : t('consultation.confirmed', 'Booking Confirmed'),
       );
 
-      // Trigger instant consultation confirmation push notification
-      await sendLocalNotification(
-        `🌿 Consultation Confirmed with Dr. ${doctor.name}`,
-        `Your appointment for ${selectedSlot.time} on ${selectedSlot.date} has been confirmed. Tap to view receipt.`,
-        { bookingId: createdBooking.id, type: 'consultation_booked' },
-      );
-
-      // Schedule 5-minute pre-appointment reminder
-      try {
-        const timeParts = selectedSlot.time.split(' ');
-        const timeStr = timeParts[0];
-        const meridiem = timeParts[1];
-        let [hours, minutes] = timeStr.split(':').map(Number);
-        if (meridiem === 'PM' && hours < 12) hours += 12;
-        if (meridiem === 'AM' && hours === 12) hours = 0;
-
-        const appointmentDate = new Date(selectedSlot.date);
-        appointmentDate.setHours(hours, minutes || 0, 0, 0);
-        const reminderDate = new Date(appointmentDate.getTime() - 5 * 60 * 1000);
-
-        const targetDate =
-          reminderDate.getTime() > Date.now() ? reminderDate : new Date(Date.now() + 15 * 1000); // 15-second demo fallback if booking current slot
-
-        await scheduleAppointmentReminder(
-          `⏰ Upcoming Consultation in 5 Minutes`,
-          `Your Ayurvedic consultation with Dr. ${doctor.name} starts at ${selectedSlot.time}. Please be ready.`,
-          targetDate,
-          { bookingId: createdBooking.id, doctorId: doctor.id, type: 'consultation_5min_reminder' },
+      // Only send notifications when slot data is available (skip for offline queued bookings)
+      if (selectedSlot) {
+        await sendLocalNotification(
+          t('consultation.notifConfirmedTitle', '🌿 Consultation Confirmed with {{name}}', {
+            name: doctor.name,
+          }),
+          t(
+            'consultation.notifConfirmedBody',
+            'Your appointment for {{time}} on {{date}} has been confirmed. Tap to view receipt.',
+            { time: selectedSlot.time, date: selectedSlot.date },
+          ),
+          { bookingId: createdBooking.id, type: 'consultation_booked' },
         );
-      } catch (err) {
-        console.warn('Failed to schedule 5-minute reminder:', err);
+
+        try {
+          const timeParts = selectedSlot.time.split(' ');
+          const timeStr = timeParts[0];
+          const meridiem = timeParts[1];
+          let [hours, minutes] = timeStr.split(':').map(Number);
+          if (meridiem === 'PM' && hours < 12) hours += 12;
+          if (meridiem === 'AM' && hours === 12) hours = 0;
+
+          const appointmentDate = new Date(selectedSlot.date);
+          appointmentDate.setHours(hours, minutes || 0, 0, 0);
+          const reminderDate = new Date(appointmentDate.getTime() - 5 * 60 * 1000);
+
+          const targetDate =
+            reminderDate.getTime() > Date.now() ? reminderDate : new Date(Date.now() + 15 * 1000);
+
+          await scheduleAppointmentReminder(
+            t('consultation.notifReminderTitle', '⏰ Upcoming Consultation in 5 Minutes'),
+            t(
+              'consultation.notifReminderBody',
+              'Your Ayurvedic consultation with {{name}} starts at {{time}}. Please be ready.',
+              { name: doctor.name, time: selectedSlot.time },
+            ),
+            targetDate,
+            {
+              bookingId: createdBooking.id,
+              doctorId: doctor.id,
+              type: 'consultation_5min_reminder',
+            },
+          );
+        } catch (err) {
+          console.warn('Failed to schedule 5-minute reminder:', err);
+        }
       }
 
       navigate(NAVIGATION.BOOKING_CONFIRMATION, { bookingId: createdBooking.id });
@@ -171,11 +223,16 @@ export function SlotBookingScreen(): React.JSX.Element {
         title={t('consultation.bookAppointment', 'Book Appointment')}
       />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
+        <ScrollView
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         {/* Date Selector Row with Auto-Centering FlatList */}
         <Typography style={styles.sectionTitle} variant="h3">
           {t('consultation.selectDate', 'Select Date')}
@@ -221,16 +278,69 @@ export function SlotBookingScreen(): React.JSX.Element {
           style={styles.dateListContainer}
         />
 
-        {/* Extracted Slot Selection Component */}
+        {/* Slot Selection Component */}
         <Typography style={styles.sectionTitle} variant="h3">
-          {t('consultation.selectTimeSlot', 'Select Time Slot')}
+          {offlineQueueMode
+            ? t('consultation.selectPreferredTime', 'Preferred Time Window')
+            : t('consultation.selectTimeSlot', 'Select Time Slot')}
         </Typography>
-        <SlotPicker
-          isLoading={loadingSlots}
-          onSelectSlot={setSelectedSlot}
-          selectedSlot={selectedSlot}
-          slots={slots}
-        />
+
+        {offlineQueueMode ? (
+          <View style={styles.offlineSection}>
+            <View style={styles.offlineSlotNotice}>
+              <Ionicons color={theme.colors.warning} name="cloud-offline-outline" size={ms(20)} />
+              <View style={{ flex: 1 }}>
+                <Typography style={styles.offlineSlotTitle} variant="label">
+                  {t('consultation.offlineQueueNoticeTitle', 'Offline Slot Queueing')}
+                </Typography>
+                <Typography style={styles.offlineSlotText} variant="caption">
+                  {t(
+                    'consultation.offlineQueueNoticeBody',
+                    'Live slot availability cannot be verified offline. Select your preferred time window and your booking will be queued for automatic confirmation upon reconnection.',
+                  )}
+                </Typography>
+              </View>
+            </View>
+
+            <View style={styles.timeWindowGrid}>
+              {offlineTimeWindows.map((tw) => {
+                const isSelected = selectedTimeWindow === tw.time;
+                return (
+                  <TouchableOpacity
+                    key={tw.id}
+                    onPress={() => setSelectedTimeWindow(tw.time)}
+                    style={[styles.timeWindowCard, isSelected && styles.timeWindowCardSelected]}
+                  >
+                    <Ionicons
+                      color={isSelected ? theme.colors.textInverse : theme.colors.primary}
+                      name={tw.icon}
+                      size={ms(18)}
+                    />
+                    <Typography
+                      style={isSelected ? styles.timeWindowTextSelected : styles.timeWindowText}
+                      variant="bodySmallSemiBold"
+                    >
+                      {tw.label}
+                    </Typography>
+                    <Typography
+                      style={isSelected ? styles.timeWindowSubSelected : styles.timeWindowSub}
+                      variant="caption"
+                    >
+                      {tw.time}
+                    </Typography>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ) : (
+          <SlotPicker
+            isLoading={loadingSlots}
+            onSelectSlot={setSelectedSlot}
+            selectedSlot={selectedSlot}
+            slots={slots}
+          />
+        )}
 
         {/* Extracted Patient Details Form Component */}
         <Typography style={styles.sectionTitle} variant="h3">
@@ -273,26 +383,33 @@ export function SlotBookingScreen(): React.JSX.Element {
             </View>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Sticky Confirm Button */}
       <View style={styles.footer}>
         <Button
-          disabled={!selectedSlot || !patientName.trim() || !patientPhone.trim()}
+          disabled={
+            (!selectedSlot && !offlineQueueMode) ||
+            !patientName.trim() ||
+            !patientPhone.trim()
+          }
           isLoading={isBooking}
           leftIcon={
             <Ionicons
               color={theme.colors.textInverse}
-              name="shield-checkmark-outline"
+              name={offlineQueueMode ? 'cloud-offline-outline' : 'shield-checkmark-outline'}
               size={ms(18)}
             />
           }
           onPress={handleConfirmBooking}
           style={styles.confirmBtn}
           title={
-            selectedSlot
-              ? `${t('consultation.confirmBooking', 'Confirm Booking')} (${selectedSlot.time})`
-              : t('consultation.selectSlot', 'Select Slot')
+            offlineQueueMode
+              ? t('consultation.queueOfflineBooking', 'Queue Offline Booking')
+              : selectedSlot
+                ? `${t('consultation.confirmBooking', 'Confirm Booking')} (${selectedSlot.time})`
+                : t('consultation.selectSlot', 'Select Slot')
           }
           variant="primary"
         />
@@ -309,6 +426,61 @@ const styles = StyleSheet.create((theme, rt) => ({
   sectionTitle: {
     marginBottom: ms(10),
     marginTop: ms(8),
+  },
+  offlineSection: {
+    marginBottom: ms(8),
+  },
+  offlineSlotNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: ms(10),
+    backgroundColor: theme.colors.warningLight,
+    borderRadius: theme.radius.md,
+    padding: ms(12),
+    marginBottom: ms(12),
+    borderWidth: 1,
+    borderColor: theme.colors.warning,
+  },
+  offlineSlotTitle: {
+    color: theme.colors.warning,
+    marginBottom: ms(2),
+  },
+  offlineSlotText: {
+    color: theme.colors.textSecondary,
+    lineHeight: ms(17),
+  },
+  timeWindowGrid: {
+    gap: ms(8),
+    marginBottom: ms(8),
+  },
+  timeWindowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    paddingVertical: ms(12),
+    paddingHorizontal: ms(14),
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    gap: ms(10),
+  },
+  timeWindowCardSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  timeWindowText: {
+    color: theme.colors.text,
+  },
+  timeWindowTextSelected: {
+    color: theme.colors.textInverse,
+  },
+  timeWindowSub: {
+    marginLeft: 'auto',
+    color: theme.colors.textSecondary,
+  },
+  timeWindowSubSelected: {
+    marginLeft: 'auto',
+    color: theme.colors.textInverse,
   },
   dateListContainer: {
     marginBottom: ms(8),

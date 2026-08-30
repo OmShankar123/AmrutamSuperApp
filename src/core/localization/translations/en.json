@@ -96,7 +96,20 @@
     "viewAllBookings": "View All Bookings",
     "noConfirmedFound": "No Upcoming Consultations",
     "noConfirmedSub": "You don't have any upcoming confirmed appointments.",
-    "activeAppointments": "{{count}} Active Appointments"
+    "activeAppointments": "{{count}} Active Appointments",
+    "bookingSavedOffline": "Booking Saved Offline!",
+    "offlineQueueSub": "Your consultation request is securely queued on this device and will sync automatically once internet returns.",
+    "pendingSync": "PENDING SYNC • OFFLINE",
+    "pendingSyncShort": "SYNC PENDING",
+    "offlineSyncActive": "Automatic Sync Active",
+    "offlineSyncActiveSub": "Zero data loss guarantee: You do not need to repeat this booking. When online, our sync manager will confirm your slot in the background.",
+    "profileUnavailableOffline": "Profile Unavailable Offline",
+    "profileUnavailableOfflineSub": "This doctor profile has not been cached yet. Please connect to the internet to view complete details.",
+    "offlineQueueNoticeTitle": "Offline Slot Queueing",
+    "offlineQueueNoticeBody": "Live slot availability cannot be verified offline. Select your preferred time window and your booking will be queued for automatic confirmation upon reconnection.",
+    "selectPreferredTime": "Preferred Time Window",
+    "queueOfflineBooking": "Queue Offline Booking",
+    "queued": "Queued"
   },
   "shop": {
     "title": "Ayurvedic Store",
@@ -159,7 +172,10 @@
     "mockPaymentMethod": "UPI / NetBanking / COD",
     "units": "Units",
     "noResultsSub": "Try adjusting your filters or search terms.",
-    "ayushDiscount": "AYUSH Discount ({{percent}}%)"
+    "ayushDiscount": "AYUSH Discount ({{percent}}%)",
+    "orderSavedOffline": "Order Saved Offline!",
+    "orderSavedOfflineSub": "Your Ayurvedic order is securely queued on your device and will automatically transmit once connected.",
+    "offlineOrderPill": "Offline Protection Active • Auto-Sync on Reconnect"
   },
   "healthRecords": {
     "title": "Patient Health Timeline",

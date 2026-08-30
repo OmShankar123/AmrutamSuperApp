@@ -336,7 +336,7 @@ export function RecordDetailScreen(): React.JSX.Element {
       >
         <View style={styles.imageModalBackdrop}>
           <TouchableOpacity onPress={() => setSelectedImage(null)} style={styles.modalCloseBtn}>
-            <Ionicons color="#FFFFFF" name="close" size={ms(24)} />
+            <Ionicons color={theme.colors.textInverse} name="close" size={ms(24)} />
           </TouchableOpacity>
 
           {selectedImage && (
@@ -541,7 +541,7 @@ const styles = StyleSheet.create((theme) => ({
     height: '90%',
   },
   modalImageTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.textInverse,
     marginTop: ms(12),
     textAlign: 'center',
   },

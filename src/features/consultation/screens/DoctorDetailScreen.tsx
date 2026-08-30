@@ -11,6 +11,7 @@ import type { RootStackParamList } from '@/navigation';
 import { NAVIGATION } from '@/navigation/constants';
 import { navigate } from '@/navigation/navigationRef';
 import { Badge } from '@/shared/components/Badge';
+import { EmptyState } from '@/shared/components/EmptyState';
 import { Button } from '@/shared/components/Button';
 import { Header } from '@/shared/components/Header';
 import { ScreenWrapper } from '@/shared/components/ScreenWrapper';
@@ -25,11 +26,11 @@ export function DoctorDetailScreen(): React.JSX.Element {
   const { theme } = useUnistyles();
   const { t } = useLanguage();
   const route = useRoute<DoctorDetailRouteProp>();
-  const { doctorId } = route.params;
+  const { doctorId, initialDoctor } = route.params ?? {};
 
-  const { data: doctor, isLoading, isError, refetch } = useDoctorDetail(doctorId);
+  const { data: doctor, isLoading, isError, refetch } = useDoctorDetail(doctorId, initialDoctor);
 
-  if (isLoading) {
+  if (isLoading && !doctor) {
     return (
       <ScreenWrapper withTopInset={false}>
         <Header showBack title={t('consultation.doctorDetails', 'Doctor Profile')} />
@@ -45,10 +46,16 @@ export function DoctorDetailScreen(): React.JSX.Element {
       <ScreenWrapper withTopInset={false}>
         <Header showBack title={t('consultation.doctorDetails', 'Doctor Profile')} />
         <View style={styles.centered}>
-          <Typography style={styles.errorText} variant="error">
-            {t('common.error', 'Could not load doctor details.')}
-          </Typography>
-          <Button onPress={() => refetch()} title={t('common.retry', 'Retry')} variant="primary" />
+          <EmptyState
+            actionTitle={t('common.retry', 'Retry')}
+            description={t(
+              'common.errorSub',
+              'An error occurred while loading this doctor profile. Please check your connection and retry.',
+            )}
+            iconName="alert-circle-outline"
+            onAction={() => refetch()}
+            title={t('common.errorTitle', 'Unable to Load Profile')}
+          />
         </View>
       </ScreenWrapper>
     );
@@ -57,7 +64,6 @@ export function DoctorDetailScreen(): React.JSX.Element {
   return (
     <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
       <Header showBack subtitle={doctor.specialization} title={doctor.name} />
-
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.profileCard}>
           <Image
@@ -129,7 +135,7 @@ export function DoctorDetailScreen(): React.JSX.Element {
           </Typography>
           <View style={styles.chipsWrap}>
             <Badge label={`🌿 ${doctor.specialization}`} variant="success" />
-            {doctor.qualifications.map((q: string) => (
+            {(doctor.qualifications ?? []).map((q: string) => (
               <Badge key={q} label={`🎓 ${q}`} variant="neutral" />
             ))}
           </View>
@@ -141,7 +147,7 @@ export function DoctorDetailScreen(): React.JSX.Element {
           </Typography>
           <View style={styles.langRow}>
             <Ionicons color={theme.colors.primary} name="chatbubbles-outline" size={ms(16)} />
-            <Typography variant="body">{doctor.languages.join(' • ')}</Typography>
+            <Typography variant="body">{(doctor.languages ?? []).join(' • ')}</Typography>
           </View>
         </View>
 
@@ -177,7 +183,7 @@ export function DoctorDetailScreen(): React.JSX.Element {
           </Typography>
         </View>
         <Button
-          onPress={() => navigate(NAVIGATION.SLOT_BOOKING, { doctorId: doctor.id })}
+          onPress={() => navigate(NAVIGATION.SLOT_BOOKING, { doctorId: doctor.id, initialDoctor: doctor })}
           style={styles.bookBtn}
           title={t('consultation.bookAppointment', 'Book Appointment')}
           variant="primary"
@@ -331,7 +337,7 @@ const styles = StyleSheet.create((theme, rt) => ({
   bookBtn: {
     minWidth: ms(160),
   },
-  centered: {
+    centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',

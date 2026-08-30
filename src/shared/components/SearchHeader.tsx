@@ -119,8 +119,8 @@ const styles = StyleSheet.create((theme) => ({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceElevated,
+    borderRadius: ms(22),
     paddingHorizontal: ms(12),
     height: ms(44),
     borderWidth: 1,

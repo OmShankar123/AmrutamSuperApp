@@ -52,7 +52,11 @@ export function WishlistScreen(): React.JSX.Element {
         transition={200}
       />
 
-      <View style={styles.cardContent}>
+      <TouchableOpacity
+        style={{ flex: 1 }}
+        onPress={() => navigate(NAVIGATION.PRODUCT_DETAIL, { productId: item.id, initialProduct: item })}
+      >
+        <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
           <Typography numberOfLines={1} style={styles.productName} variant="bodySmallSemiBold">
             {item.name}
@@ -77,6 +81,7 @@ export function WishlistScreen(): React.JSX.Element {
           />
         </View>
       </View>
+      </TouchableOpacity>
     </View>
   );
 
