@@ -1,6 +1,6 @@
 # 🌿 Amrutam Ayurvedic Super App
 
-A production-grade, offline-first React Native (Expo SDK 52) application designed with classical Ayurvedic principles, high-performance architecture, and a modern Unistyles design system.
+A production-grade, offline-first React Native (Expo SDK 57) application designed with classical Ayurvedic principles, high-performance architecture, and a modern Unistyles design system.
 
 ---
 
