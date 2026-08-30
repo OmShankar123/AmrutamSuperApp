@@ -1,6 +1,8 @@
 import NetInfo from '@react-native-community/netinfo';
+import { onlineManager } from '@tanstack/react-query';
 import { create } from 'zustand';
 
+import { getChaosConfig, setChaosConfig } from '@/core/api/interceptors/chaos';
 import { logger } from '@/core/logger';
 import { queryClient } from '@/core/providers/QueryProvider';
 import {
@@ -16,25 +18,67 @@ import { API_ENDPOINTS } from '../endpoints';
 interface NetworkState {
   isConnected: boolean;
   isInternetReachable: boolean | null;
+  isForcedOffline: boolean;
+  actualConnected: boolean;
   isSyncing: boolean;
   pendingSyncCount: number;
   setNetworkState: (connected: boolean, reachable: boolean | null) => void;
+  setForcedOffline: (forced: boolean) => void;
   syncQueue: () => Promise<void>;
   updatePendingCount: () => void;
 }
 
+const initialChaos = getChaosConfig();
+const initialForcedOffline = Boolean(initialChaos.offline);
+
+// Sync initial online status to TanStack Query onlineManager
+onlineManager.setOnline(!initialForcedOffline);
+
 export const useNetworkStore = create<NetworkState>((set, get) => ({
-  isConnected: true,
-  isInternetReachable: true,
+  isForcedOffline: initialForcedOffline,
+  actualConnected: true,
+  isConnected: !initialForcedOffline,
+  isInternetReachable: !initialForcedOffline,
   isSyncing: false,
   pendingSyncCount: getMutationQueue().length,
 
-  setNetworkState: (isConnected, isInternetReachable) => {
+  setForcedOffline: (forced: boolean) => {
+    setChaosConfig({ offline: forced });
+    const actual = get().actualConnected;
+    const effectiveConnected = forced ? false : actual;
     const wasOffline = !get().isConnected;
-    set({ isConnected, isInternetReachable });
 
-    // Auto-sync when transitioning from offline to online
-    if (wasOffline && isConnected) {
+    // Notify TanStack Query onlineManager
+    onlineManager.setOnline(effectiveConnected);
+
+    set({
+      isForcedOffline: forced,
+      isConnected: effectiveConnected,
+      isInternetReachable: forced ? false : actual,
+    });
+
+    if (wasOffline && effectiveConnected) {
+      get().syncQueue();
+    }
+  },
+
+  setNetworkState: (connected: boolean, reachable: boolean | null) => {
+    const isForced = get().isForcedOffline;
+    const effectiveConnected = isForced ? false : connected;
+    const effectiveReachable = isForced ? false : (reachable ?? connected);
+    const wasOffline = !get().isConnected;
+
+    // Notify TanStack Query onlineManager
+    onlineManager.setOnline(effectiveConnected);
+
+    set({
+      actualConnected: connected,
+      isConnected: effectiveConnected,
+      isInternetReachable: effectiveReachable,
+    });
+
+    // Auto-sync mutations & refresh queries when transitioning from offline to online
+    if (wasOffline && effectiveConnected) {
       get().syncQueue();
     }
   },
@@ -72,9 +116,8 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
       }
     }
 
-    // Refresh query caches for consultations and records
-    queryClient.invalidateQueries({ queryKey: ['consultations'] });
-    queryClient.invalidateQueries({ queryKey: ['health-records'] });
+    // Automatically invalidate and refetch all query caches with fresh server data
+    queryClient.invalidateQueries();
 
     set({ isSyncing: false, pendingSyncCount: getMutationQueue().length });
 
@@ -85,6 +128,13 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
 }));
 
 export function initNetworkListener(): () => void {
+  // Fetch initial net info state
+  NetInfo.fetch().then((state) => {
+    useNetworkStore
+      .getState()
+      .setNetworkState(Boolean(state.isConnected), state.isInternetReachable);
+  });
+
   const unsubscribe = NetInfo.addEventListener((state) => {
     useNetworkStore
       .getState()

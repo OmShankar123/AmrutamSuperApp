@@ -4,7 +4,13 @@ import * as Linking from 'expo-linking';
 import { NAVIGATION } from './constants';
 import type { RootStackParamList } from './types';
 
-const prefix = Linking.createURL('/');
+const prefix = (() => {
+  try {
+    return Linking.createURL('/');
+  } catch {
+    return 'amrutam://';
+  }
+})();
 
 export const linkingConfig: LinkingOptions<RootStackParamList> = {
   prefixes: [prefix, 'amrutam://', 'https://amrutam.co.in'],

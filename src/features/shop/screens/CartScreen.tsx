@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, ScrollView, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -341,28 +342,71 @@ export function CartScreen(): React.JSX.Element {
               </>
             ) : (
               <View style={styles.successWrapper}>
-                <View style={styles.successIconCircle}>
-                  <Ionicons color={theme.colors.primary} name="checkmark-circle" size={ms(52)} />
-                </View>
-                <Typography variant="h1">
-                  {t('shop.orderPlacedSuccess', 'Order Placed Successfully!')}
-                </Typography>
-                <Typography style={styles.successSub} variant="bodySmall">
-                  {t(
-                    'shop.orderSuccessSub',
-                    'Your Ayurvedic formulations are being handcrafted and prepared for dispatch.',
-                  )}
-                </Typography>
-                <Button
-                  onPress={() => {
-                    setCheckoutModalVisible(false);
-                    setOrderPlaced(false);
-                    navigate(NAVIGATION.PRODUCT_CATALOG);
-                  }}
-                  style={{ width: '100%', marginTop: ms(20) }}
-                  title={t('shop.continueShopping', 'Continue Shopping')}
-                  variant="primary"
-                />
+                {/* Clean Centered Badge */}
+                <Animated.View entering={ZoomIn.duration(400)} style={styles.successBadgeOuter}>
+                  <View style={styles.successBadgeInner}>
+                    <Ionicons color="#FFFFFF" name="checkmark" size={ms(32)} />
+                  </View>
+                </Animated.View>
+
+                <Animated.View
+                  entering={FadeInDown.delay(150).duration(350)}
+                  style={{ alignItems: 'center' }}
+                >
+                  <Typography style={styles.successHeading} variant="h1">
+                    {t('shop.orderPlacedSuccess', 'Order Placed Successfully!')}
+                  </Typography>
+                </Animated.View>
+
+                <Animated.View
+                  entering={FadeInDown.delay(230).duration(350)}
+                  style={{ alignItems: 'center' }}
+                >
+                  <Typography style={styles.successSub} variant="bodySmall">
+                    {t(
+                      'shop.orderSuccessSub',
+                      'Your Ayurvedic formulations are being handcrafted and prepared for dispatch.',
+                    )}
+                  </Typography>
+                </Animated.View>
+
+                {/* Clean Info Pill */}
+                <Animated.View
+                  entering={FadeInDown.delay(310).duration(350)}
+                  style={styles.orderInfoPill}
+                >
+                  <Ionicons color={theme.colors.primary} name="shield-checkmark" size={ms(16)} />
+                  <Typography style={styles.orderInfoText} variant="caption">
+                    100% Authentic Ayush Certified • Dispatch within 24h
+                  </Typography>
+                </Animated.View>
+
+                {/* Action Buttons */}
+                <Animated.View
+                  entering={FadeInDown.delay(390).duration(350)}
+                  style={styles.successBtnGroup}
+                >
+                  <Button
+                    onPress={() => {
+                      setCheckoutModalVisible(false);
+                      setOrderPlaced(false);
+                      navigate(NAVIGATION.PRODUCT_CATALOG);
+                    }}
+                    style={{ width: '100%' }}
+                    title={t('shop.continueShopping', 'Continue Shopping')}
+                    variant="primary"
+                  />
+                  <Button
+                    onPress={() => {
+                      setCheckoutModalVisible(false);
+                      setOrderPlaced(false);
+                      navigate(NAVIGATION.TIMELINE);
+                    }}
+                    style={{ width: '100%', marginTop: ms(10) }}
+                    title={t('shop.viewTimeline', 'View Health Timeline')}
+                    variant="outline"
+                  />
+                </Animated.View>
               </View>
             )}
           </View>
@@ -530,21 +574,56 @@ const styles = StyleSheet.create((theme, rt) => ({
   },
   successWrapper: {
     alignItems: 'center',
-    paddingVertical: ms(24),
+    paddingVertical: ms(20),
   },
-  successIconCircle: {
-    width: ms(80),
-    height: ms(80),
-    borderRadius: ms(40),
-    backgroundColor: theme.colors.successLight,
+  successBadgeOuter: {
+    width: ms(84),
+    height: ms(84),
+    borderRadius: ms(42),
+    backgroundColor: '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: ms(16),
+  },
+  successBadgeInner: {
+    width: ms(56),
+    height: ms(56),
+    borderRadius: ms(28),
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: theme.shadows.sm,
+  },
+  successHeading: {
+    textAlign: 'center',
+    fontSize: ms(20),
+    fontFamily: theme.fonts.bold,
   },
   successSub: {
     textAlign: 'center',
     color: theme.colors.textSecondary,
     marginTop: ms(8),
-    paddingHorizontal: ms(16),
+    paddingHorizontal: ms(20),
+    lineHeight: ms(20),
+  },
+  orderInfoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ms(8),
+    backgroundColor: theme.colors.surfaceElevated,
+    paddingVertical: ms(8),
+    paddingHorizontal: ms(14),
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginTop: ms(16),
+  },
+  orderInfoText: {
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.semiBold,
+  },
+  successBtnGroup: {
+    width: '100%',
+    marginTop: ms(20),
   },
 }));

@@ -1,3 +1,4 @@
+import { appStorage } from '@/core/storage';
 import type { Booking, Doctor, DoctorFilterParams, Slot } from '@/features/consultation/types';
 import type { HealthRecord, HealthRecordFilterParams } from '@/features/health-records/types';
 import type { Product, ProductFilterParams } from '@/features/shop/types';
@@ -7,6 +8,9 @@ import { generateDoctors, generateSlotsForDoctor, isTimeInPast } from './doctors
 import { generateProducts } from './products';
 import { generateHealthRecords } from './records';
 
+const BOOKINGS_STORAGE_KEY = 'amrutam_persisted_bookings';
+const SLOTS_STORAGE_KEY = 'amrutam_persisted_slots';
+
 class InMemoryDatabase {
   private doctors?: Doctor[];
   private products?: Product[];
@@ -14,12 +18,48 @@ class InMemoryDatabase {
   private bookings: Map<string, Booking> = new Map();
   private slotBookings: Set<string> = new Set();
 
+  constructor() {
+    this.hydrateFromStorage();
+  }
+
+  private hydrateFromStorage(): void {
+    try {
+      const rawBookings = appStorage.getString(BOOKINGS_STORAGE_KEY);
+      if (rawBookings) {
+        const parsed: Booking[] = JSON.parse(rawBookings);
+        parsed.forEach((b) => this.bookings.set(b.id, b));
+      }
+
+      const rawSlots = appStorage.getString(SLOTS_STORAGE_KEY);
+      if (rawSlots) {
+        const parsedSlots: string[] = JSON.parse(rawSlots);
+        parsedSlots.forEach((s) => this.slotBookings.add(s));
+      }
+    } catch (e) {
+      console.warn('Failed to hydrate bookings from storage:', e);
+    }
+  }
+
+  private saveToStorage(): void {
+    try {
+      const bookingsArray = Array.from(this.bookings.values());
+      appStorage.set(BOOKINGS_STORAGE_KEY, JSON.stringify(bookingsArray));
+      appStorage.set(SLOTS_STORAGE_KEY, JSON.stringify(Array.from(this.slotBookings)));
+    } catch (e) {
+      console.warn('Failed to save bookings to storage:', e);
+    }
+  }
+
   reset(): void {
     this.doctors = undefined;
     this.products = undefined;
     this.records = undefined;
     this.bookings.clear();
     this.slotBookings.clear();
+    try {
+      appStorage.remove(BOOKINGS_STORAGE_KEY);
+      appStorage.remove(SLOTS_STORAGE_KEY);
+    } catch {}
   }
 
   getDoctors(): Doctor[] {
@@ -152,6 +192,7 @@ class InMemoryDatabase {
 
     this.slotBookings.add(booking.slotId);
     this.bookings.set(bookingId, createdBooking);
+    this.saveToStorage();
 
     // Cross-Module Integration: Auto-inject confirmed consultation record into patient timeline
     const now = new Date();
@@ -200,6 +241,7 @@ class InMemoryDatabase {
 
     booking.status = 'cancelled';
     this.slotBookings.delete(booking.slotId);
+    this.saveToStorage();
     return true;
   }
 

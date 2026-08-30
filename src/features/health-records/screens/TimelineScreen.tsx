@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, View } f
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useNetworkStore } from '@/core/api/services/syncManager';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { NAVIGATION } from '@/navigation/constants';
 import { navigate } from '@/navigation/navigationRef';
@@ -65,6 +66,7 @@ const RECORD_TYPE_CONFIG: {
 export function TimelineScreen(): React.JSX.Element {
   const { theme, rt } = useUnistyles();
   const { t } = useLanguage();
+  const isConnected = useNetworkStore((s) => s.isConnected);
   const chipsListRef = useRef<FlatList>(null);
 
   const [query, setQuery] = useState('');
@@ -172,7 +174,7 @@ export function TimelineScreen(): React.JSX.Element {
   );
 
   const renderFooter = () => {
-    if (!isFetchingNextPage) return null;
+    if (!isConnected || !isFetchingNextPage) return null;
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator color={theme.colors.primary} size="small" />
@@ -256,7 +258,7 @@ export function TimelineScreen(): React.JSX.Element {
       </View>
 
       {/* Timeline List */}
-      {isLoading ? (
+      {isLoading && records.length === 0 ? (
         <View style={styles.loaderWrap}>
           <ActivityIndicator color={theme.colors.primary} size="large" />
           <Typography style={styles.loaderText} variant="bodySmall">
@@ -303,7 +305,7 @@ export function TimelineScreen(): React.JSX.Element {
           ListFooterComponent={renderFooter}
           maxToRenderPerBatch={20}
           onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) {
+            if (isConnected && hasNextPage && !isFetchingNextPage) {
               fetchNextPage();
             }
           }}

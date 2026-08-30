@@ -23,7 +23,7 @@ export const apiClient = axios.create({
       await new Promise((resolve) => setTimeout(resolve, simulatedDelay));
     }
 
-    if (chaos.enabled && chaos.offline) {
+    if (chaos.offline) {
       return Promise.reject(new Error('Network offline (simulated)'));
     }
 
@@ -59,7 +59,15 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(chaosRequestInterceptor, (error) => Promise.reject(error));
 
 apiClient.interceptors.response.use(chaosResponseInterceptor, (error) => {
-  logger.error('API', error?.message ?? 'Unknown error');
+  const isOffline =
+    error?.message?.includes('Network offline') ||
+    error?.message?.includes('Network Error') ||
+    error?.code === 'ERR_NETWORK';
+  if (isOffline) {
+    logger.log('API', error?.message ?? 'Network offline');
+  } else {
+    logger.error('API', error?.message ?? 'Unknown error');
+  }
   return Promise.reject(error);
 });
 

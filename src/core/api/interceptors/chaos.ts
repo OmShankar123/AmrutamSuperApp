@@ -42,11 +42,11 @@ export async function chaosRequestInterceptor(
 ): Promise<InternalAxiosRequestConfig> {
   const chaos = getChaosConfig();
 
-  if (!chaos.enabled) return config;
-
   if (chaos.offline) {
     return Promise.reject(new Error('Network offline (simulated)'));
   }
+
+  if (!chaos.enabled) return config;
 
   await sleep(chaos.delayMs);
 

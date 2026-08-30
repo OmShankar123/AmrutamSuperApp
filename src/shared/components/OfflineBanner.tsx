@@ -11,6 +11,7 @@ import { Typography } from './Typography';
 
 export function OfflineBanner(): React.JSX.Element | null {
   const isConnected = useNetworkStore((s) => s.isConnected);
+  const isForcedOffline = useNetworkStore((s) => s.isForcedOffline);
   const { theme } = useUnistyles();
   const { t } = useLanguage();
 
@@ -20,7 +21,11 @@ export function OfflineBanner(): React.JSX.Element | null {
     <View style={styles.banner}>
       <Ionicons color={theme.colors.textInverse} name="cloud-offline-outline" size={ms(16)} />
       <Typography style={styles.text} variant="caption">
-        {t('offline.banner', 'You are offline — showing cached data')}
+        {isForcedOffline
+          ? t('dev.offlineSimulated', 'OFFLINE (Simulated)') +
+            ' — ' +
+            t('offline.showingCached', 'showing cached data')
+          : t('offline.banner', 'You are offline — showing cached data')}
       </Typography>
     </View>
   );

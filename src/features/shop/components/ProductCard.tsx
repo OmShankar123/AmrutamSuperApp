@@ -80,7 +80,7 @@ export const ProductCard = memo(function ProductCard({
         {/* Discount Badge */}
         {product.discountPercentage > 0 && (
           <View style={styles.discountBadge}>
-            <Typography style={styles.discountText} variant="caption">
+            <Typography numberOfLines={1} style={styles.discountText} variant="caption">
               {product.discountPercentage}% {t('shop.off', 'OFF')}
             </Typography>
           </View>
@@ -215,6 +215,9 @@ const styles = StyleSheet.create((theme) => ({
     paddingHorizontal: ms(6),
     paddingVertical: ms(3),
     borderRadius: ms(4),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   discountText: {
     color: theme.colors.textInverse,

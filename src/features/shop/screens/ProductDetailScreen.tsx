@@ -112,7 +112,7 @@ export function ProductDetailScreen(): React.JSX.Element {
           />
           {product.discountPercentage > 0 && (
             <View style={styles.discountBadge}>
-              <Typography style={styles.discountText} variant="caption">
+              <Typography numberOfLines={1} style={styles.discountText} variant="caption">
                 {product.discountPercentage}% {t('shop.off', 'OFF')}
               </Typography>
             </View>
@@ -317,6 +317,8 @@ const styles = StyleSheet.create((theme, rt) => ({
     paddingHorizontal: ms(10),
     paddingVertical: ms(5),
     borderRadius: theme.radius.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   discountText: {
     color: theme.colors.textInverse,

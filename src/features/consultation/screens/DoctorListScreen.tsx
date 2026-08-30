@@ -4,6 +4,7 @@ import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useFeatureFlags } from '@/core/config/featureFlags';
+import { useNetworkStore } from '@/core/api/services/syncManager';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { NAVIGATION } from '@/navigation/constants';
 import { navigate } from '@/navigation/navigationRef';
@@ -34,6 +35,7 @@ const SPECIALIZATIONS: { name: Specialization; icon: keyof typeof Ionicons.glyph
 export function DoctorListScreen(): React.JSX.Element {
   const { theme, rt } = useUnistyles();
   const { t } = useLanguage();
+  const isConnected = useNetworkStore((s) => s.isConnected);
   const chipsListRef = useRef<FlatList>(null);
   const sortListRef = useRef<FlatList>(null);
 
@@ -133,7 +135,7 @@ export function DoctorListScreen(): React.JSX.Element {
   );
 
   const renderFooter = () => {
-    if (!isFetchingNextPage) return null;
+    if (!isConnected || !isFetchingNextPage) return null;
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator color={theme.colors.primary} size="small" />
@@ -269,7 +271,7 @@ export function DoctorListScreen(): React.JSX.Element {
       </View>
 
       {/* Doctor List */}
-      {isLoading ? (
+      {isLoading && doctors.length === 0 ? (
         <View style={styles.loaderWrap}>
           <ActivityIndicator color={theme.colors.primary} size="large" />
           <Typography style={styles.loaderText} variant="bodySmall">
@@ -317,7 +319,7 @@ export function DoctorListScreen(): React.JSX.Element {
           ListFooterComponent={renderFooter}
           maxToRenderPerBatch={15}
           onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) {
+            if (isConnected && hasNextPage && !isFetchingNextPage) {
               fetchNextPage();
             }
           }}

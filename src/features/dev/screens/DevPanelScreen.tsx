@@ -10,6 +10,7 @@ import { useFeatureFlags } from '@/core/config/featureFlags';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { usePushNotifications } from '@/core/notifications';
 import { queryClient } from '@/core/providers/QueryProvider';
+import { cacheStorage } from '@/core/storage';
 import { clearMutationQueue } from '@/core/storage/queue';
 import { useCartStore } from '@/features/shop/store/useCartStore';
 import { useWishlistStore } from '@/features/shop/store/useWishlistStore';
@@ -25,7 +26,8 @@ export function DevPanelScreen(): React.JSX.Element {
   const { t } = useLanguage();
   const [chaos, setChaos] = useState<ChaosConfig>(getChaosConfig);
   const isConnected = useNetworkStore((s) => s.isConnected);
-  const setNetworkState = useNetworkStore((s) => s.setNetworkState);
+  const isForcedOffline = useNetworkStore((s) => s.isForcedOffline);
+  const setForcedOffline = useNetworkStore((s) => s.setForcedOffline);
 
   const { flags, setFlag, resetFlags } = useFeatureFlags();
   const {
@@ -47,8 +49,13 @@ export function DevPanelScreen(): React.JSX.Element {
   };
 
   const toggleForceOffline = (val: boolean) => {
-    updateChaos({ enabled: true, offline: val });
-    setNetworkState(!val, !val);
+    setForcedOffline(val);
+    setChaos(getChaosConfig());
+    if (val) {
+      showSuccessToast(t('dev.offlineEnabled', 'Simulated offline mode enabled'), 'Offline Mode');
+    } else {
+      showSuccessToast(t('dev.onlineRestored', 'Simulated online mode restored'), 'Online Mode');
+    }
   };
 
   const handleSelectTheme = (mode: 'light' | 'dark' | 'system') => {
@@ -64,6 +71,7 @@ export function DevPanelScreen(): React.JSX.Element {
 
   const handleResetCache = () => {
     queryClient.clear();
+    cacheStorage.clearAll();
     clearMutationQueue();
     resetFlags();
     useCartStore.getState().clearCart();
@@ -78,84 +86,82 @@ export function DevPanelScreen(): React.JSX.Element {
     await sendLocalNotification(
       '🌿 Amrutam Consultation Reminder',
       'Your upcoming Ayurvedic consultation with Dr. Pari Iyer starts in 15 minutes!',
-      { doctorId: 'doc-1', type: 'consultation_reminder' },
-    );
-    showSuccessToast(
-      'Test notification sent with high priority sound & badge!',
-      'Notification Sent',
+      { type: 'CONSULTATION_REMINDER', doctorId: 'doc_1' },
     );
   };
 
   const latencyPresets = [
-    { label: t('dev.zeroDelay', '0ms (Fast)'), val: 0 },
-    { label: t('dev.normalWifi', '350ms (Normal 4G)'), val: 350 },
-    { label: t('dev.slow3g', '2000ms (Slow 3G)'), val: 2000 },
-    { label: t('dev.edge2g', '4000ms (2G Network)'), val: 4000 },
+    { label: 'Off', val: 0 },
+    { label: '200ms (Fast 4G)', val: 200 },
+    { label: '800ms (3G)', val: 800 },
+    { label: '2000ms (Edge)', val: 2000 },
+    { label: '4000ms (Extreme)', val: 4000 },
   ];
 
   const errorRatePresets = [
-    { label: t('dev.zeroErrors', '0% (Stable)'), val: 0 },
-    { label: t('dev.tenPercent', '10% (Flaky)'), val: 0.1 },
-    { label: t('dev.twentyFivePercent', '25% (Degraded)'), val: 0.25 },
-    { label: t('dev.fiftyPercent', '50% (High Failure)'), val: 0.5 },
-  ];
-
-  const themeOptions: {
-    label: string;
-    mode: 'light' | 'dark' | 'system';
-    icon: keyof typeof Ionicons.glyphMap;
-  }[] = [
-    { label: t('dev.light', 'Light'), mode: 'light', icon: 'sunny-outline' },
-    { label: t('dev.dark', 'Dark'), mode: 'dark', icon: 'moon-outline' },
-    { label: t('dev.system', 'System'), mode: 'system', icon: 'phone-portrait-outline' },
-  ];
-
-  const deliveryThresholdPresets = [
-    { label: '₹299 (Flash Sale)', val: 299 },
-    { label: '₹500 (Default)', val: 500 },
-    { label: '₹999 (Standard)', val: 999 },
-  ];
-
-  const discountRatePresets = [
-    { label: '10% (Default)', val: 10 },
-    { label: '15% (Festive)', val: 15 },
-    { label: '20% (Mega Sale)', val: 20 },
+    { label: '0%', val: 0 },
+    { label: '10%', val: 0.1 },
+    { label: '25%', val: 0.25 },
+    { label: '50%', val: 0.5 },
+    { label: '100%', val: 1.0 },
   ];
 
   return (
-    <ScreenWrapper withHorizontalPadding={false} withTopInset={false}>
-      <Header showClose title={t('dev.title', 'Developer & Chaos Panel')} />
+    <ScreenWrapper style={styles.screen} withHorizontalPadding={false} withTopInset={false}>
+      <Header
+        subtitle={t('dev.subtitle', 'API Simulation & Diagnostics')}
+        title={t('dev.title', 'Chaos & Dev Panel')}
+      />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Theme Switcher (Dark Mode Toggle) */}
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Runtime Theme Switcher (Placed at Top) */}
         <View style={styles.card}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons color={theme.colors.primary} name="color-palette-outline" size={ms(18)} />
-            <Typography variant="h3">{t('dev.themeMode', 'App Theme Mode')}</Typography>
+            <Typography variant="h3">
+              {t('dev.runtimeThemeSwitcher', 'Runtime Theme Switcher')}
+            </Typography>
           </View>
           <Typography style={styles.sectionDesc} variant="caption">
-            {t('dev.themeModeSub', 'Switch between Light, Dark, or System Adaptive theme')}
+            {t(
+              'dev.themeSwitcherSub',
+              'Switch between Vedic Light, Dark, or System Adaptive theme on the fly',
+            )}
           </Typography>
 
-          <View style={styles.presetGrid}>
-            {themeOptions.map((opt) => {
-              const isSelected = activeTheme === opt.mode;
+          <View style={styles.themeGrid}>
+            {(['light', 'dark', 'system'] as const).map((mode) => {
+              const isSelected = activeTheme === mode;
               return (
                 <TouchableOpacity
-                  key={opt.mode}
-                  onPress={() => handleSelectTheme(opt.mode)}
-                  style={[styles.presetChip, isSelected && styles.presetChipActive]}
+                  key={mode}
+                  onPress={() => handleSelectTheme(mode)}
+                  style={[styles.themeChip, isSelected && styles.themeChipActive]}
                 >
                   <Ionicons
-                    color={isSelected ? theme.colors.textInverse : theme.colors.textSecondary}
-                    name={opt.icon}
-                    size={ms(14)}
+                    color={isSelected ? theme.colors.textInverse : theme.colors.text}
+                    name={
+                      mode === 'light'
+                        ? 'sunny-outline'
+                        : mode === 'dark'
+                          ? 'moon-outline'
+                          : 'phone-portrait-outline'
+                    }
+                    size={ms(16)}
                   />
                   <Typography
-                    style={isSelected ? styles.presetTextActive : styles.presetText}
+                    style={isSelected ? styles.themeTextActive : styles.themeText}
                     variant="bodySmallSemiBold"
                   >
-                    {opt.label}
+                    {mode === 'light'
+                      ? t('dev.light', 'Light')
+                      : mode === 'dark'
+                        ? t('dev.dark', 'Dark')
+                        : t('dev.system', 'System')}
                   </Typography>
                 </TouchableOpacity>
               );
@@ -163,189 +169,194 @@ export function DevPanelScreen(): React.JSX.Element {
           </View>
         </View>
 
-        {/* Push Notification Diagnostics */}
+        {/* Force Offline Toggle */}
+        <View style={styles.card}>
+          <View style={styles.rowBetween}>
+            <View style={styles.labelGroup}>
+              <Typography variant="h3">{t('dev.forceOffline', 'Force Offline Mode')}</Typography>
+              <Typography style={styles.subtext} variant="caption">
+                {t(
+                  'dev.forceOfflineSub',
+                  'Disconnect app from network to test offline sync banner & cached queries',
+                )}
+              </Typography>
+            </View>
+            <Switch
+              onValueChange={toggleForceOffline}
+              thumbColor={isForcedOffline ? theme.colors.error : theme.colors.border}
+              trackColor={{ false: theme.colors.surfaceElevated, true: theme.colors.errorLight }}
+              value={isForcedOffline}
+            />
+          </View>
+        </View>
+
+        {/* Push Notification Diagnostics Card */}
         <View style={styles.card}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons color={theme.colors.primary} name="notifications-outline" size={ms(18)} />
-            <Typography variant="h3">Push Notifications & FCM</Typography>
+            <Typography variant="h3">
+              {t('dev.pushDiagnostics', 'Push Notification Diagnostics')}
+            </Typography>
           </View>
           <Typography style={styles.sectionDesc} variant="caption">
-            Expo SDK 57 push token generator, notification channels & permissions
+            {t(
+              'dev.pushDiagnosticsSub',
+              'Verify APNs / FCM hardware tokens, permissions, and test local notifications',
+            )}
           </Typography>
 
           <View style={styles.diagRow}>
             <Typography style={styles.diagLabel} variant="bodySmall">
-              Permission Status
+              {t('dev.permissionStatus', 'OS Permission')}
             </Typography>
             <Typography
               style={permissionGranted ? styles.connectedText : styles.disconnectedText}
               variant="bodySmallSemiBold"
             >
-              {permissionGranted ? 'GRANTED' : 'NOT GRANTED'}
+              {permissionGranted
+                ? t('dev.granted', 'GRANTED')
+                : t('dev.notGranted', 'NOT GRANTED')}
             </Typography>
           </View>
 
-          <View style={styles.diagRow}>
-            <Typography style={styles.diagLabel} variant="bodySmall">
-              Expo Push Token
+          <View style={styles.tokenBox}>
+            <Typography style={styles.tokenLabel} variant="caption">
+              {t('dev.expoPushToken', 'Expo Push Token')}
             </Typography>
-            <Typography
-              numberOfLines={1}
-              style={[styles.diagValue, { maxWidth: '55%' }]}
-              variant="caption"
-            >
-              {expoPushToken ?? 'Requesting...'}
+            <Typography numberOfLines={2} selectable style={styles.tokenValue} variant="caption">
+              {expoPushToken || t('dev.tokenPending', 'No token generated yet')}
             </Typography>
           </View>
 
-          {devicePushToken && (
-            <View style={styles.diagRow}>
-              <Typography style={styles.diagLabel} variant="bodySmall">
-                Native FCM Token
+          {devicePushToken ? (
+            <View style={styles.tokenBox}>
+              <Typography style={styles.tokenLabel} variant="caption">
+                {t('dev.nativeDeviceToken', 'Native FCM/APNs Device Token')}
               </Typography>
-              <Typography
-                numberOfLines={1}
-                style={[styles.diagValue, { maxWidth: '55%' }]}
-                variant="caption"
-              >
+              <Typography numberOfLines={2} selectable style={styles.tokenValue} variant="caption">
                 {devicePushToken}
               </Typography>
             </View>
-          )}
+          ) : null}
 
-          <View style={{ flexDirection: 'row', gap: ms(8), marginTop: ms(10) }}>
+          <View style={styles.btnRow}>
+            {!permissionGranted ? (
+              <Button
+                onPress={requestPermissionAndGetToken}
+                size="sm"
+                style={styles.actionBtn}
+                title={t('dev.requestPushPermission', 'Request Permission & Token')}
+                variant="outline"
+              />
+            ) : null}
             <Button
-              onPress={requestPermissionAndGetToken}
-              style={{ flex: 1 }}
-              title="Request Permission"
-              variant="outline"
-            />
-            <Button
-              leftIcon={
-                <Ionicons
-                  color={theme.colors.textInverse}
-                  name="paper-plane-outline"
-                  size={ms(14)}
-                />
-              }
               onPress={handleTestNotification}
-              style={{ flex: 1 }}
-              title="Trigger Test Push"
-              variant="primary"
+              size="sm"
+              style={styles.actionBtn}
+              title={t('dev.sendTestPush', 'Trigger Local Test Push')}
+              variant="secondary"
             />
           </View>
         </View>
 
-        {/* Remote Feature Flags Card */}
+        {/* Feature Flags (Config Remote/Local) */}
         <View style={styles.card}>
           <View style={styles.sectionHeaderRow}>
             <Ionicons color={theme.colors.primary} name="flag-outline" size={ms(18)} />
-            <Typography variant="h3">Remote Feature Flags</Typography>
+            <Typography variant="h3">{t('dev.featureFlags', 'Feature Flags')}</Typography>
           </View>
           <Typography style={styles.sectionDesc} variant="caption">
-            Toggle dynamic app features and promotional campaigns in real-time
+            {t('dev.featureFlagsSub', 'Toggle experimental and in-flight features instantly')}
           </Typography>
 
-          <View style={styles.flagRow}>
-            <View style={styles.flagLabelWrap}>
-              <Typography variant="bodySmallSemiBold">AYUSH Discount Banner</Typography>
-              <Typography style={styles.flagDesc} variant="caption">
-                Enables promotional discount campaign in Shop Cart
+          <View style={styles.flagItem}>
+            <View style={styles.labelGroup}>
+              <Typography variant="bodySemiBold">
+                {t('dev.flagAyushDiscount', 'AYUSH Ministry Discount')}
+              </Typography>
+              <Typography style={styles.subtext} variant="caption">
+                {t('dev.flagAyushDiscountSub', 'Enable special ministry subsidies in cart')}
               </Typography>
             </View>
             <Switch
               onValueChange={(val) => setFlag('enableAyushDiscount', val)}
               thumbColor={flags.enableAyushDiscount ? theme.colors.primary : theme.colors.border}
-              trackColor={{ false: theme.colors.surfaceElevated, true: theme.colors.primaryLight }}
+              trackColor={{
+                false: theme.colors.surfaceElevated,
+                true: theme.colors.primaryLight,
+              }}
               value={flags.enableAyushDiscount}
             />
           </View>
 
-          <View style={styles.flagRow}>
-            <View style={styles.flagLabelWrap}>
-              <Typography variant="bodySmallSemiBold">PDF Report Export</Typography>
-              <Typography style={styles.flagDesc} variant="caption">
-                Enables client-side PDF medical summary export in Health Records
+          <View style={styles.divider} />
+
+          <View style={styles.flagItem}>
+            <View style={styles.labelGroup}>
+              <Typography variant="bodySemiBold">
+                {t('dev.flagPdfExport', 'Prescription PDF Export')}
+              </Typography>
+              <Typography style={styles.subtext} variant="caption">
+                {t('dev.flagPdfExportSub', 'Allow direct download and print of health records')}
               </Typography>
             </View>
             <Switch
               onValueChange={(val) => setFlag('enablePdfExport', val)}
               thumbColor={flags.enablePdfExport ? theme.colors.primary : theme.colors.border}
-              trackColor={{ false: theme.colors.surfaceElevated, true: theme.colors.primaryLight }}
+              trackColor={{
+                false: theme.colors.surfaceElevated,
+                true: theme.colors.primaryLight,
+              }}
               value={flags.enablePdfExport}
             />
           </View>
 
-          <View style={styles.flagRow}>
-            <View style={styles.flagLabelWrap}>
-              <Typography variant="bodySmallSemiBold">Doctor Rating Sort</Typography>
-              <Typography style={styles.flagDesc} variant="caption">
-                Enables the top ratings sort algorithm in Consultation & Shop catalogs
+          <View style={styles.divider} />
+
+          <View style={styles.flagItem}>
+            <View style={styles.labelGroup}>
+              <Typography variant="bodySemiBold">
+                {t('dev.flagDoctorRatingSort', 'Doctor Rating Sort Filter')}
+              </Typography>
+              <Typography style={styles.subtext} variant="caption">
+                {t('dev.flagDoctorRatingSortSub', 'Sort doctors by patient satisfaction rating')}
               </Typography>
             </View>
             <Switch
               onValueChange={(val) => setFlag('enableDoctorRatingSort', val)}
-              thumbColor={flags.enableDoctorRatingSort ? theme.colors.primary : theme.colors.border}
-              trackColor={{ false: theme.colors.surfaceElevated, true: theme.colors.primaryLight }}
+              thumbColor={
+                flags.enableDoctorRatingSort ? theme.colors.primary : theme.colors.border
+              }
+              trackColor={{
+                false: theme.colors.surfaceElevated,
+                true: theme.colors.primaryLight,
+              }}
               value={flags.enableDoctorRatingSort}
             />
           </View>
-        </View>
 
-        {/* Remote Config Dynamic Parameters */}
-        <View style={styles.card}>
-          <View style={styles.sectionHeaderRow}>
-            <Ionicons color={theme.colors.primary} name="cloud-outline" size={ms(18)} />
-            <Typography variant="h3">Remote Config Dynamic Variables</Typography>
-          </View>
-          <Typography style={styles.sectionDesc} variant="caption">
-            Change runtime values and business rules over the air
-          </Typography>
+          <View style={styles.divider} />
 
-          <Typography style={styles.subHeading} variant="label">
-            Free Delivery Threshold (Current: ₹{flags.freeDeliveryThreshold})
-          </Typography>
-          <View style={styles.presetGrid}>
-            {deliveryThresholdPresets.map((preset) => {
-              const isSelected = flags.freeDeliveryThreshold === preset.val;
-              return (
-                <TouchableOpacity
-                  key={preset.val}
-                  onPress={() => setFlag('freeDeliveryThreshold', preset.val)}
-                  style={[styles.presetChip, isSelected && styles.presetChipActive]}
-                >
-                  <Typography
-                    style={isSelected ? styles.presetTextActive : styles.presetText}
-                    variant="bodySmallSemiBold"
-                  >
-                    {preset.label}
-                  </Typography>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Typography style={[styles.subHeading, { marginTop: ms(12) }]} variant="label">
-            Promotional Discount Rate (Current: {flags.discountPercentage}%)
-          </Typography>
-          <View style={styles.presetGrid}>
-            {discountRatePresets.map((preset) => {
-              const isSelected = flags.discountPercentage === preset.val;
-              return (
-                <TouchableOpacity
-                  key={preset.val}
-                  onPress={() => setFlag('discountPercentage', preset.val)}
-                  style={[styles.presetChip, isSelected && styles.presetChipActive]}
-                >
-                  <Typography
-                    style={isSelected ? styles.presetTextActive : styles.presetText}
-                    variant="bodySmallSemiBold"
-                  >
-                    {preset.label}
-                  </Typography>
-                </TouchableOpacity>
-              );
-            })}
+          <View style={styles.flagItem}>
+            <View style={styles.labelGroup}>
+              <Typography variant="bodySemiBold">
+                {t('dev.flagExpressDelivery', 'Express Dispatch Tier')}
+              </Typography>
+              <Typography style={styles.subtext} variant="caption">
+                {t('dev.flagExpressDeliverySub', 'Ultra-fast dispatch tier option for medicines')}
+              </Typography>
+            </View>
+            <Switch
+              onValueChange={(val) => setFlag('enableExpressDelivery', val)}
+              thumbColor={
+                flags.enableExpressDelivery ? theme.colors.primary : theme.colors.border
+              }
+              trackColor={{
+                false: theme.colors.surfaceElevated,
+                true: theme.colors.primaryLight,
+              }}
+              value={flags.enableExpressDelivery}
+            />
           </View>
         </View>
 
@@ -435,27 +446,6 @@ export function DevPanelScreen(): React.JSX.Element {
           </View>
         </View>
 
-        {/* Force Offline Toggle */}
-        <View style={styles.card}>
-          <View style={styles.rowBetween}>
-            <View style={styles.labelGroup}>
-              <Typography variant="h3">{t('dev.forceOffline', 'Force Offline Mode')}</Typography>
-              <Typography style={styles.subtext} variant="caption">
-                {t(
-                  'dev.forceOfflineSub',
-                  'Disconnect app from network to test offline sync banner & cached queries',
-                )}
-              </Typography>
-            </View>
-            <Switch
-              onValueChange={toggleForceOffline}
-              thumbColor={!isConnected ? theme.colors.error : theme.colors.border}
-              trackColor={{ false: theme.colors.surfaceElevated, true: theme.colors.errorLight }}
-              value={!isConnected}
-            />
-          </View>
-        </View>
-
         {/* System Diagnostics */}
         <View style={styles.card}>
           <View style={styles.sectionHeaderRow}>
@@ -468,12 +458,14 @@ export function DevPanelScreen(): React.JSX.Element {
               {t('dev.networkStatus', 'Network Status')}
             </Typography>
             <Typography
-              style={isConnected ? styles.connectedText : styles.disconnectedText}
+              style={!isConnected ? styles.disconnectedText : styles.connectedText}
               variant="bodySmallSemiBold"
             >
-              {isConnected
-                ? t('dev.online', 'ONLINE')
-                : t('dev.offlineSimulated', 'OFFLINE (Simulated)')}
+              {isForcedOffline
+                ? t('dev.offlineSimulated', 'OFFLINE (Simulated)')
+                : isConnected
+                  ? t('dev.online', 'ONLINE')
+                  : t('dev.offline', 'OFFLINE')}
             </Typography>
           </View>
 
@@ -481,45 +473,60 @@ export function DevPanelScreen(): React.JSX.Element {
             <Typography style={styles.diagLabel} variant="bodySmall">
               {t('dev.mmkvEngine', 'MMKV Storage Engine')}
             </Typography>
-            <Typography variant="bodySmallSemiBold">{t('dev.active', 'Active')}</Typography>
+            <Typography style={styles.connectedText} variant="bodySmallSemiBold">
+              {t('dev.active', 'Active')}
+            </Typography>
           </View>
 
           <View style={styles.diagRow}>
             <Typography style={styles.diagLabel} variant="bodySmall">
               {t('dev.queryCache', 'TanStack Query Cache')}
             </Typography>
-            <Typography variant="bodySmallSemiBold">{t('dev.hydrated', 'Hydrated')}</Typography>
+            <Typography style={styles.connectedText} variant="bodySmallSemiBold">
+              {t('dev.hydrated', 'Hydrated')}
+            </Typography>
           </View>
         </View>
 
-        {/* Actions */}
-        <Button
-          leftIcon={
-            <Ionicons color={theme.colors.textInverse} name="trash-outline" size={ms(18)} />
-          }
-          onPress={handleResetCache}
-          style={styles.resetBtn}
-          title={t('dev.wipeCache', 'Wipe Query Cache & Reset Stores')}
-          variant="danger"
-        />
+        {/* Cache & Data Management */}
+        <View style={styles.card}>
+          <Typography variant="h3">
+            {t('dev.wipeCache', 'Wipe Query Cache & Reset Stores')}
+          </Typography>
+          <Typography style={styles.sectionDesc} variant="caption">
+            {t(
+              'dev.wipeCacheSub',
+              'Clear local queries, mutations queue, cart and wishlist for clean state testing',
+            )}
+          </Typography>
+          <Button
+            onPress={handleResetCache}
+            style={styles.wipeBtn}
+            title={t('dev.wipeCache', 'Wipe All Local Storage')}
+            variant="danger"
+          />
+        </View>
       </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
-  scrollContent: {
+  screen: {
+    backgroundColor: theme.colors.background,
+  },
+  scrollContainer: {
     padding: ms(16),
     paddingBottom: ms(40),
+    gap: ms(14),
   },
   card: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
+    borderRadius: ms(14),
     padding: ms(16),
-    marginBottom: ms(12),
     borderWidth: 1,
     borderColor: theme.colors.border,
-    boxShadow: theme.shadows.sm,
+    gap: ms(10),
   },
   rowBetween: {
     flexDirection: 'row',
@@ -537,38 +544,28 @@ const styles = StyleSheet.create((theme) => ({
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ms(6),
-    marginBottom: ms(4),
+    gap: ms(8),
   },
   sectionDesc: {
     color: theme.colors.textSecondary,
-    marginBottom: ms(12),
-  },
-  subHeading: {
-    marginBottom: ms(6),
   },
   presetGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: ms(8),
+    marginTop: ms(4),
   },
   presetChip: {
-    flex: 1,
-    minWidth: '30%',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: ms(4),
-    paddingVertical: ms(10),
-    paddingHorizontal: ms(10),
-    backgroundColor: theme.colors.surfaceElevated,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
+    paddingVertical: ms(8),
+    paddingHorizontal: ms(12),
+    borderRadius: ms(8),
     borderWidth: 1,
     borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceElevated,
   },
   presetChipActive: {
     backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primaryDark,
+    borderColor: theme.colors.primary,
   },
   presetText: {
     color: theme.colors.text,
@@ -576,34 +573,77 @@ const styles = StyleSheet.create((theme) => ({
   presetTextActive: {
     color: theme.colors.textInverse,
   },
-  flagRow: {
+  themeGrid: {
+    flexDirection: 'row',
+    gap: ms(10),
+    marginTop: ms(4),
+  },
+  themeChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: ms(6),
+    paddingVertical: ms(10),
+    borderRadius: ms(10),
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceElevated,
+  },
+  themeChipActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  themeText: {
+    color: theme.colors.text,
+  },
+  themeTextActive: {
+    color: theme.colors.textInverse,
+  },
+  flagItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: ms(10),
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.surfaceElevated,
+    paddingVertical: ms(4),
   },
-  flagLabelWrap: {
-    flex: 1,
-    paddingRight: ms(12),
+  divider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
   },
-  flagDesc: {
+  tokenBox: {
+    backgroundColor: theme.colors.surfaceElevated,
+    borderRadius: ms(8),
+    padding: ms(10),
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    gap: ms(4),
+  },
+  tokenLabel: {
     color: theme.colors.textSecondary,
-    marginTop: ms(2),
+    fontFamily: theme.fonts.bold,
+  },
+  tokenValue: {
+    color: theme.colors.primary,
+    fontFamily: theme.fonts.semiBold,
+  },
+  btnRow: {
+    flexDirection: 'row',
+    gap: ms(10),
+    marginTop: ms(4),
+  },
+  actionBtn: {
+    flex: 1,
   },
   diagRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: ms(6),
+    alignItems: 'center',
+    paddingVertical: ms(4),
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.surfaceElevated,
+    borderBottomColor: theme.colors.border,
   },
   diagLabel: {
     color: theme.colors.textSecondary,
-  },
-  diagValue: {
-    color: theme.colors.text,
   },
   connectedText: {
     color: theme.colors.success,
@@ -611,7 +651,7 @@ const styles = StyleSheet.create((theme) => ({
   disconnectedText: {
     color: theme.colors.error,
   },
-  resetBtn: {
-    marginTop: ms(12),
+  wipeBtn: {
+    marginTop: ms(4),
   },
 }));

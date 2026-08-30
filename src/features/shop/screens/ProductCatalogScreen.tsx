@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, RefreshControl, TouchableOpacity, View } f
 import { StyleSheet, useUnistyles } from 'react-native-unistyles';
 import { Ionicons } from '@expo/vector-icons';
 
+import { useNetworkStore } from '@/core/api/services/syncManager';
 import { useLanguage } from '@/core/localization/useLanguage';
 import { NAVIGATION } from '@/navigation/constants';
 import { navigate } from '@/navigation/navigationRef';
@@ -37,6 +38,7 @@ const CATEGORIES: { name: ProductCategory; icon: keyof typeof Ionicons.glyphMap 
 export function ProductCatalogScreen(): React.JSX.Element {
   const { theme, rt } = useUnistyles();
   const { t } = useLanguage();
+  const isConnected = useNetworkStore((s) => s.isConnected);
   const cartItems = useCartStore((s) => s.items);
   const totalCartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const wishlistItems = useWishlistStore((s) => s.items);
@@ -122,7 +124,7 @@ export function ProductCatalogScreen(): React.JSX.Element {
   );
 
   const renderFooter = () => {
-    if (!isFetchingNextPage) return null;
+    if (!isConnected || !isFetchingNextPage) return null;
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator color={theme.colors.primary} size="small" />
@@ -231,7 +233,7 @@ export function ProductCatalogScreen(): React.JSX.Element {
       />
 
       {/* Product Grid */}
-      {isLoading ? (
+      {isLoading && products.length === 0 ? (
         <View style={styles.loaderWrap}>
           <ActivityIndicator color={theme.colors.primary} size="large" />
           <Typography style={styles.loaderText} variant="bodySmall">
@@ -277,7 +279,7 @@ export function ProductCatalogScreen(): React.JSX.Element {
           maxToRenderPerBatch={10}
           numColumns={2}
           onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage) {
+            if (isConnected && hasNextPage && !isFetchingNextPage) {
               fetchNextPage();
             }
           }}

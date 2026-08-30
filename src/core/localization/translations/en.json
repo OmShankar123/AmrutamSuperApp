@@ -180,7 +180,8 @@
   "offline": {
     "banner": "You are offline — showing cached data",
     "syncing": "Syncing queued changes...",
-    "syncComplete": "All offline changes synced!"
+    "syncComplete": "All offline changes synced!",
+    "showingCached": "showing cached data"
   },
   "dev": {
     "title": "Chaos & Dev Panel",

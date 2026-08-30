@@ -10,6 +10,7 @@ export default ({ config }: ConfigContext): ExpoConfig =>
     ...config,
     name: Env.EXPO_PUBLIC_NAME,
     slug: 'amrutamsuperapp',
+    scheme: 'amrutam',
     version: Env.EXPO_PUBLIC_VERSION,
     orientation: 'portrait',
     icon: './assets/icon.png',
@@ -31,6 +32,13 @@ export default ({ config }: ConfigContext): ExpoConfig =>
       favicon: './assets/favicon.png',
     },
     plugins: [
+      [
+        'expo-notifications',
+        {
+          icon: './assets/notification-icon.png',
+          color: '#1E5631',
+        },
+      ],
       [
         'expo-font',
         {
